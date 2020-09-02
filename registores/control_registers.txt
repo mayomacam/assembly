@@ -1,0 +1,9 @@
+OF -> overflow flag
+DF -> direction flag
+IF -> interrupt flag
+TF -> trap flag
+SF -> sign flag
+ZF -> zero flag
+AF -> auxiliary carry flag
+PF -> parity flag
+CF -> carry flag

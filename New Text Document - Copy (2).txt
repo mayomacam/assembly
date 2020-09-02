@@ -1,0 +1,16 @@
+print 0 to 9 and add 1 onto it
+
+
+print out any string in one character aat a line
+
+
+print any string with one word new on every line like
+n
+ne
+new
+
+
+
+interupts and how can we use
+
+

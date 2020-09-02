@@ -1,0 +1,586 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.7 [en] (Win98; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 26: Splash Screen</title>
+</head>
+<body text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFF99">Tutorial 26: Splash
+Screen</font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>Now that we know how to use
+a bitmap, we can progress to a more creative use of it. Splash screen.
+Download <a href="files/tut26.zip">the example</a>.</font></font>
+<h3>
+<b><font face="Arial,Helvetica"><font color="#FFCC33">Theory</font></font></b></h3>
+<font face="Arial,Helvetica"><font size=-1>A splash screen is a window
+that has no title bar, no system menu box, no border that displays a bitmap
+for a while and then disappears automatically. It's usually used during
+program startup, to display the program's logo or to distract the user's
+attention while the program does some lengthy initialization. We will implement
+a splash screen in this tutorial.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>The first step is to include
+the bitmap in the resource file. However, if you think of it,&nbsp; it's
+a waste of precious memory to load a bitmap that will be used only once
+and keep it in memory till the program is closed. A better solution is
+to create a *resource* DLL which contains the bitmap and has the sole purpose
+of displaying the splash screen. This way, you can load the DLL when you
+want to display the splash screen and unload it when it's not necessary
+anymore. So we will have two modules: the main program and the splash DLL.
+We will put the bitmap into the DLL's resource.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>The general scheme is as
+follows:</font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Put the bitmap into the DLL
+as a bitmap resource</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>The main program calls LoadLibrary
+to load the dll into memory</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>The DLL entrypoint function
+of the DLL is called. It will create a timer and set the length of time
+that the splash screen will be displayed. Next it&nbsp; will register and
+create a window without caption and border and display the bitmap in the
+client area.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>When the specified length of
+time elapsed, the splash screen is removed from the screen and the control
+is returned to the main program</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>The main program calls FreeLibrary
+to unload the DLL from memory and then goes on with whatever task it is
+supposed to do.</font></font></li>
+</ol>
+<font face="Arial,Helvetica"><font size=-1>We will examine the mechanisms
+in detail.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#66FFFF"><font size=+0>Load/Unload
+DLL</font></font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>You can dynamically load a DLL
+with LoadLibrary function which has the following syntax:</font></font>
+<blockquote><font face="Arial,Helvetica">LoadLibrary&nbsp; proto lpDLLName:DWORD</font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>It takes only one parameter:
+the address of the name of the DLL you want to load into memory. If the
+call is successful, it returns the module handle of the DLL else it returns
+NULL.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>To unload a DLL, call FreeLibrary:</font></font>
+<blockquote><font face="Arial,Helvetica">FreeLibrary&nbsp; proto&nbsp;
+hLib:DWORD</font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>It takes one parameter: the
+module handle of the DLL you want to unload. Normally, you got that handle
+from LoadLibrary</font></font>
+<h3>
+<b><font face="Arial,Helvetica"><font color="#66FFFF"><font size=+0>How
+to use a timer</font></font></font></b></h3>
+<font face="Arial,Helvetica"><font size=-1>First, you must create a timer
+first with SetTimer:</font></font>
+<blockquote><font face="Arial,Helvetica"><font size=-1>SetTimer&nbsp; proto&nbsp;
+hWnd:DWORD, TimerID:DWORD, uElapse:DWORD, lpTimerFunc:DWORD</font></font>
+<p><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">hWnd</font></b>
+is the handle of a window that will receive the timer notification message.
+This parameter can be NULL to specify that there is no window that's associated
+with the timer.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">TimerID</font></b>
+is a user-defined value that is used as the ID of the timer.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">uElapse
+</font></b>is
+the time-out value in milliseconds.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">lpTimerFunc
+</font></b>is
+the address of a function that will process the timer notification messages.
+If you pass NULL, the timer messages will be sent to the window specified
+by hWnd parameter.</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>SetTimer returns the ID of
+the timer if successful. Otherwise it returns NULL. So it's best not to
+use the timer ID of 0.</font></font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>You can create a timer in two
+ways:</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>If you have a window and you
+want the timer notification messages to go to that window, you must pass
+all four parameters to SetTimer (the lpTimerFunc must be NULL)</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>If you don't have a window or
+you don't want to process the timer messages in the window procedure, you
+must pass NULL to the function in place of a window handle. You must also
+specify the address of the timer function that will process the timer messages.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>We will use the first approach
+in this example.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>When the time-out period
+elapses, WM_TIMER message is sent to the window that is associated with
+the timer. For example, if you specify uElapse of 1000, your window will
+receive WM_TIMER every second.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>When you don't need the
+timer anymore, destroy it with KillTimer:</font></font>
+<blockquote><font face="Arial,Helvetica"><font size=-1>KillTimer&nbsp;
+proto&nbsp; hWnd:DWORD, TimerID:DWORD</font></font></blockquote>
+
+<h3>
+<b><font face="Arial,Helvetica"><font color="#FFCC33">Example:</font></font></b></h3>
+<tt>;-----------------------------------------------------------------------</tt>
+<br><tt>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The main program</tt>
+<br><tt>;-----------------------------------------------------------------------</tt>
+<br><tt>.386</tt>
+<br><tt>.model flat,stdcall</tt>
+<br><tt>option casemap:none</tt>
+<br><tt>include \masm32\include\windows.inc</tt>
+<br><tt>include \masm32\include\user32.inc</tt>
+<br><tt>include \masm32\include\kernel32.inc</tt>
+<br><tt>includelib \masm32\lib\user32.lib</tt>
+<br><tt>includelib \masm32\lib\kernel32.lib</tt>
+<p><tt>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</tt>
+<p><tt>.data</tt>
+<br><tt>ClassName db "SplashDemoWinClass",0</tt>
+<br><tt>AppName&nbsp; db "Splash Screen Example",0</tt>
+<br><b><tt><font color="#66FF99">Libname db "splash.dll",0</font></tt></b>
+<p><tt>.data?</tt>
+<br><tt>hInstance HINSTANCE ?</tt>
+<br><tt>CommandLine LPSTR ?</tt>
+<br><tt>.code</tt>
+<br><tt>start:</tt>
+<br><b><tt><font color="#66FF99">&nbsp;invoke LoadLibrary,addr Libname</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;.if eax!=NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp; invoke FreeLibrary,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;.endif</font></tt></b>
+<br><tt>&nbsp;invoke GetModuleHandle, NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp; hInstance,eax</tt>
+<br><tt>&nbsp;invoke GetCommandLine</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp; CommandLine,eax</tt>
+<br><tt>&nbsp;invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</tt>
+<br><tt>&nbsp;invoke ExitProcess,eax</tt>
+<p><tt>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</tt>
+<br><tt>&nbsp;LOCAL wc:WNDCLASSEX</tt>
+<br><tt>&nbsp;LOCAL msg:MSG</tt>
+<br><tt>&nbsp;LOCAL hwnd:HWND</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbClsExtra,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbWndExtra,NULL</tt>
+<br><tt>&nbsp;push&nbsp; hInstance</tt>
+<br><tt>&nbsp;pop&nbsp;&nbsp; wc.hInstance</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpszMenuName,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</tt>
+<br><tt>&nbsp;invoke LoadIcon,NULL,IDI_APPLICATION</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hIcon,eax</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hIconSm,eax</tt>
+<br><tt>&nbsp;invoke LoadCursor,NULL,IDC_ARROW</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hCursor,eax</tt>
+<br><tt>&nbsp;invoke RegisterClassEx, addr wc</tt>
+<br><tt>&nbsp;INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hInst,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; hwnd,eax</tt>
+<br><tt>&nbsp;invoke ShowWindow, hwnd,SW_SHOWNORMAL</tt>
+<br><tt>&nbsp;invoke UpdateWindow, hwnd</tt>
+<br><tt>&nbsp;.while TRUE</tt>
+<br><tt>&nbsp; invoke GetMessage, ADDR msg,NULL,0,0</tt>
+<br><tt>&nbsp; .break .if (!eax)</tt>
+<br><tt>&nbsp; invoke TranslateMessage, ADDR msg</tt>
+<br><tt>&nbsp; invoke DispatchMessage, ADDR msg</tt>
+<br><tt>&nbsp;.endw</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</tt>
+<br><tt>&nbsp;ret</tt>
+<br><tt>WinMain endp</tt>
+<p><tt>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</tt>
+<br><tt>&nbsp;.IF uMsg==WM_DESTROY</tt>
+<br><tt>&nbsp; invoke PostQuitMessage,NULL</tt>
+<br><tt>&nbsp;.ELSE</tt>
+<br><tt>&nbsp; invoke DefWindowProc,hWnd,uMsg,wParam,lParam</tt>
+<br><tt>&nbsp; ret</tt>
+<br><tt>&nbsp;.ENDIF</tt>
+<br><tt>&nbsp;xor eax,eax</tt>
+<br><tt>&nbsp;ret</tt>
+<br><tt>WndProc endp</tt>
+<br><tt>end start</tt>
+<p><tt>;--------------------------------------------------------------------</tt>
+<br><tt>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The Bitmap DLL</tt>
+<br><tt>;--------------------------------------------------------------------</tt>
+<br><tt>.386</tt>
+<br><tt>.model flat, stdcall</tt>
+<br><tt>include \masm32\include\windows.inc</tt>
+<br><tt>include \masm32\include\user32.inc</tt>
+<br><tt>include \masm32\include\kernel32.inc</tt>
+<br><tt>include \masm32\include\gdi32.inc</tt>
+<br><tt>includelib \masm32\lib\user32.lib</tt>
+<br><tt>includelib \masm32\lib\kernel32.lib</tt>
+<br><tt>includelib \masm32\lib\gdi32.lib</tt>
+<br><tt>.data</tt>
+<br><tt>BitmapName db "MySplashBMP",0</tt>
+<br><tt>ClassName db "SplashWndClass",0</tt>
+<br><tt>hBitMap dd 0</tt>
+<br><tt>TimerID dd 0</tt>
+<p><tt>.data</tt>
+<br><tt>hInstance dd ?</tt>
+<p><tt>.code</tt>
+<p><tt>DllEntry proc hInst:DWORD, reason:DWORD, reserved1:DWORD</tt> <br>
+  <tt>&nbsp;&nbsp; .if reason==DLL_PROCESS_ATTACH&nbsp; ; When the dll is loaded</tt> 
+  <br>
+  <b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push hInst</font></tt></b> 
+  <br>
+  <b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop hInstance</font></tt></b> 
+  <br>
+  <b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; call ShowBitMap</font></tt></b> 
+  <br>
+  <tt>&nbsp;&nbsp; .endif<br>
+  &nbsp;&nbsp;&nbsp;mov eax,TRUE</tt><br>
+  <tt>&nbsp;&nbsp; ret</tt> <br>
+  <tt>DllEntry Endp</tt> <br>
+  <tt>ShowBitMap proc</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL wc:WNDCLASSEX</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL msg:MSG</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL hwnd:HWND</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.cbSize,SIZEOF 
+  WNDCLASSEX</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.style, CS_HREDRAW 
+  or CS_VREDRAW</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.lpfnWndProc, 
+  OFFSET WndProc</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.cbClsExtra,NULL</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.cbWndExtra,NULL</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push&nbsp; hInstance</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop&nbsp;&nbsp; wc.hInstance</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.lpszMenuName,NULL</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.lpszClassName,OFFSET 
+  ClassName</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke LoadIcon,NULL,IDI_APPLICATION</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.hIcon,eax</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.hIconSm,0</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke LoadCursor,NULL,IDC_ARROW</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; wc.hCursor,eax</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke RegisterClassEx, addr 
+  wc</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; INVOKE CreateWindowEx,NULL,ADDR 
+  ClassName,NULL,\</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#66FF99">WS_POPUP</font></b>,CW_USEDEFAULT,\</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CW_USEDEFAULT,250,250,NULL,NULL,\</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hInstance,NULL</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp; hwnd,eax</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; INVOKE ShowWindow, hwnd,SW_SHOWNORMAL</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WHILE TRUE</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  INVOKE GetMessage, ADDR msg,NULL,0,0</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  .BREAK .IF (!eax)</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  INVOKE TranslateMessage, ADDR msg</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  INVOKE DispatchMessage, ADDR msg</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ENDW</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</tt> 
+  <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ret</tt> <br>
+  <tt>ShowBitMap endp</tt> <br>
+  <tt>WndProc proc hWnd:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL ps:PAINTSTRUCT</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL hdc:HDC</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL hMemoryDC:HDC</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL hOldBmp:DWORD</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL bitmap:BITMAP</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL DlgHeight:DWORD</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL DlgWidth:DWORD</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL DlgRect:RECT</tt> <br>
+  <tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LOCAL DesktopRect:RECT</tt> 
+<p><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if uMsg==WM_DESTROY</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if hBitMap!=0</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DeleteObject,hBitMap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></tt></b>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_CREATE</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindowRect,hWnd,addr DlgRect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDesktopWindow</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ecx,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindowRect,ecx,addr DesktopRect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push&nbsp; 0</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DlgRect.bottom</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgRect.top</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; DlgHeight,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DlgRect.right</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgRect.left</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; DlgWidth,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DesktopRect.bottom</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgHeight</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr&nbsp; eax,1</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DesktopRect.right</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgWidth</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr&nbsp; eax,1</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+call MoveWindow</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadBitmap,hInstance,addr BitmapName</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hBitMap,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTimer,hWnd,1,2000,NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,eax</font></tt></b>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_TIMER</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hWnd,WM_LBUTTONDOWN,NULL,NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke KillTimer,hWnd,TimerID</font></tt></b>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_PAINT</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke BeginPaint,hWnd,addr ps</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hdc,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateCompatibleDC,hdc</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hMemoryDC,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SelectObject,eax,hBitMap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hOldBmp,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetObject,hBitMap,sizeof BITMAP,addr bitmap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke StretchBlt,hdc,0,0,250,250,\</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hMemoryDC,0,0,bitmap.bmWidth,bitmap.bmHeight,SRCCOPY</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SelectObject,hMemoryDC,hOldBmp</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DeleteDC,hMemoryDC</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EndPaint,hWnd,addr ps</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_LBUTTONDOWN</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></tt></b>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .else</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xor eax,eax</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ret</tt>
+<br><tt>WndProc endp</tt>
+<p><tt>End DllEntry</tt>
+<h3>
+<font face="Arial,Helvetica"><font color="#FFCC33">Analysis:</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>We will examine the code in
+the main program first.</font></font>
+<blockquote><b><tt><font color="#66FF99">&nbsp;invoke LoadLibrary,addr
+Libname</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;.if eax!=NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp; invoke FreeLibrary,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;.endif</font></tt></b></blockquote>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>We call
+LoadLibrary to load the DLL named "splash.dll". And after that, unload
+it from memory with FreeLibrary. LoadLibrary will not return until the
+DLL is finished with its initialization.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>That's
+all the main program does. The interesting part is in the DLL.</font></font></font>
+<p><tt>&nbsp;&nbsp; .if reason==DLL_PROCESS_ATTACH&nbsp; ; When the dll
+is loaded</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push hInst</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop hInstance</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; call ShowBitMap</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>When
+the DLL is loaded, Windows calls its entrypoint function with DLL_PROCESS_ATTACH
+flag. We take this opportunity to display the splash screen. First we store
+the instance handle of the DLL for future use. Then call a function named
+ShowBitMap to do the real job. ShowBitMap registers a window class, creates
+a window and enters the message loop as usual. The interesting part is
+in the CreateWindowEx call:</font></font></font>
+<p><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; INVOKE CreateWindowEx,NULL,ADDR
+ClassName,NULL,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#66FF99">WS_POPUP</font></b>,CW_USEDEFAULT,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CW_USEDEFAULT,250,250,NULL,NULL,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hInstance,NULL</tt>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Note
+that the window style is only WS_POPUP which will make the window borderless
+and without caption. We also limit the width and height of the window to
+250x250 pixels.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Now
+when the window is created, in WM_CREATE message handler we move the window
+to the center of the screen with the following code.</font></font></font>
+<p><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindowRect,hWnd,addr DlgRect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDesktopWindow</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ecx,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindowRect,ecx,addr DesktopRect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push&nbsp; 0</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DlgRect.bottom</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgRect.top</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; DlgHeight,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DlgRect.right</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgRect.left</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; DlgWidth,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DesktopRect.bottom</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgHeight</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr&nbsp; eax,1</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,DesktopRect.right</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub&nbsp; eax,DlgWidth</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr&nbsp; eax,1</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+call MoveWindow</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>It
+retrieves the dimensions of the desktop and the window then calculates
+the appropriate coordinate of the left upper corner of the window to make
+it center.</font></font></font>
+<p><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadBitmap,hInstance,addr BitmapName</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hBitMap,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTimer,hWnd,1,2000,NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,eax</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Next
+it loads the bitmap from the resource with LoadBitmap and creates a timer
+with the timer ID of 1 and the time interval 2 seconds. The timer will
+send WM_TIMER messages to the window every 2 seconds.</font></font></font>
+<p><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_PAINT</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke BeginPaint,hWnd,addr ps</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hdc,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateCompatibleDC,hdc</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hMemoryDC,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SelectObject,eax,hBitMap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hOldBmp,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetObject,hBitMap,sizeof BITMAP,addr bitmap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke StretchBlt,hdc,0,0,250,250,\</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hMemoryDC,0,0,bitmap.bmWidth,bitmap.bmHeight,SRCCOPY</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SelectObject,hMemoryDC,hOldBmp</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DeleteDC,hMemoryDC</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EndPaint,hWnd,addr ps</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>When
+the window receives WM_PAINT message, it creates a memory DC, select the
+bitmap into the memory DC, obtain the size of the bitmap with GetObject
+and then put the bitmap on the window by calling StretchBlt which performs
+like BitBlt but it can stretch or compress the bitmap to the desired dimension.
+In this case, we want the bitmap to fit into the window so we use StretchBlt
+instead of BitBlt. We delete the memory DC after that.</font></font></font>
+<p><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_LBUTTONDOWN</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>It
+would be frustrating to the user if he has to wait until the splash screen
+to disappear. We can provide the user with a choice. When he clicks on
+the splash screen, it will disappear. That's why we need to process WM_LBUTTONDOWN
+message in the DLL. Upon receiving this message, the window is destroyed
+by DestroyWindow call.</font></font></font>
+<p><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_TIMER</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hWnd,WM_LBUTTONDOWN,NULL,NULL</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke KillTimer,hWnd,TimerID</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>If
+the user chooses to wait, the splash screen will disappear when the specified
+time has elapsed (in our example, it's 2 seconds). We can do this by processing
+WM_TIMER message. Upon receiving this message, we closes the window by
+sending WM_LBUTTONDOWN message to the window. This is to avoid code duplication.
+We don't have further use for the timer so we destroy it with KillTimer.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>When
+the window is closed, the DLL will return control to the main program.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly
+HomePage</a>]</b></center>
+
+</body>
+</html>

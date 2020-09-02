@@ -1,0 +1,3 @@
+%assign NUM_OF_ZEROS 4
+
+we can use assign in between text section to define constant

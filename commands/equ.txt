@@ -1,0 +1,15 @@
+equ command for creating constants
+
+
+NUM_OF_ZEROS: equ 5
+
+it's define constant len or value
+in 
+
+zeros: TIMES NUM_OF_ZEROS db "5"
+
+then it gonna print the same value like we get when we are using
+
+zeros: TIMES 5 db "5"
+zerosLen: equ $-zeros
+

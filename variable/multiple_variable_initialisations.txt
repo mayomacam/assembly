@@ -1,0 +1,5 @@
+zeros: TIMES 20 dw "0"
+zeroslen: equ $-zeros
+
+
+print same value multiple time

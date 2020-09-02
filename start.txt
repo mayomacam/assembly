@@ -1,0 +1,17 @@
+section .data
+->this one is data and bascially for declaring data and constants or initialize 
+->this data can be changed at runtime so it's just constant cannot be changed
+->it's grateful for math constants which apply for example
+#=============================================================================
+
+section .bss
+-> it's value can be change later like if you want some input from user and you want to modify it later you would want to change the variable
+#=============================================================================
+
+section .text
+->it'sjust define global variable and what should it does
+
+#=============================================================================
+section .data comes under data segment
+
+#=====================================================================

@@ -1,0 +1,14 @@
+ebp register = nova register
+
+mov ebp,hello
+mov ecx,0
+
+nothing show
+
+
+if
+
+mov ebp,hello
+mov ecx,ebp
+
+print hello varible value which is store in ebp

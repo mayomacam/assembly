@@ -1,0 +1,9 @@
+BITS 32
+
+mov ecx,5
+l1:
+push ecx
+----
+---
+pop ecx
+loop l1

@@ -1,0 +1,30 @@
+#register is a part of the processor that can hold a bit pattern
+
+#EAX store the contents of cpu
+
+#control register-> register which changes or controls the general behavior of a cpu
+
+#index register -> ESI EDI
+
+mov -> moves data from one storage container to another
+
+operand is a object
+
+
+variable is a storage location
+
+
+uninitialised variable is an variable with no data set initially
+
+
+section .bss -> for uninitialised variable
+
+constant is a variable who's value cannot be changed
+
+equ is most commanly use constant
+
+arithmatic instruction for calculation in math
+
+
+What is an unconditional jump?
+-> a jump that moves to a specific part of the code regardless of any condition

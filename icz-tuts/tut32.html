@@ -1,0 +1,813 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 32: Multiple Document Interface (MDI)</title>
+<meta http-equiv="Content-Type" content="text/html; charset=">
+</head>
+
+<body bgcolor="#FFFFFF">
+<h1 align="center"><font face="Tahoma">Tutorial 32: Multiple Document Interface 
+  (MDI)</font></h1>
+<p align="left"><font face="MS Sans Serif" size="-1">This tutorial shows you how 
+  to create MDI application. It's actually not too difficult to do. Download <a href="files/tut32.zip">the 
+  example</a>.</font></p>
+<h3 align="left"><font face="MS Sans Serif" size="-1">Theory:</font></h3>
+<p align="left"><font face="MS Sans Serif" size="-1">Multiple Document Interface 
+  (MDI) is a specification for applications that handle multple documents at the 
+  same time. You are familiar with Notepad: It's an example of Single Document 
+  Interface (SDI). Notepad can handle only one document at a time. If you want 
+  to open another document, you have to close the previous one first. As you can 
+  imagine, it's rather cumbersome. Contrast it with Microsoft Word: Word can open 
+  arbitrary documents at the same time and let the user choose which document 
+  to use. Microsoft Word is an example of Multiple Document Interface (MDI).</font></p>
+<p align="left"><font face="MS Sans Serif" size="-1">MDI application has several 
+  characteristics that are distinctive. I'll list some of them:</font></p>
+<ul>
+  <li><font face="MS Sans Serif" size="-1">Within the main window, there can be 
+    multiple child windows in the client area. All child windows are clipped to 
+    the client area.</font></li>
+  <li><font face="MS Sans Serif" size="-1">When you minimize a child window, it 
+    minimizes to the lower left corner of the client area of the main window.</font></li>
+  <li><font face="MS Sans Serif" size="-1">When you maximize achild window, its 
+    title merges with that of the main window.</font></li>
+  <li><font face="MS Sans Serif" size="-1">You can close a child window by pressing 
+    Ctrl+F4 and switch the focus between the child windows by pressing Ctrl+Tab</font></li>
+</ul>
+<p><font face="MS Sans Serif" size="-1">The main window that contains the child 
+  windows is called<b> a frame window</b>. Its client area is where the child 
+  windows live, hence the name &quot;frame&quot;. Its job is a little more elaborate 
+  than a usual window because it needs to handle some coordination for MDI.</font></p>
+<p><font face="MS Sans Serif" size="-1">To control an arbitrary number of child 
+  windows in your client area, you need a special window called <b>client window</b>. 
+  You can think of this client window as a transparent window that covers the 
+  whole client area of the frame window. It's this client window that is the actual 
+  parent of those MDI child windows. The client window is the real supervisor 
+  of the MDI child windows.</font></p>
+<table width="100%">
+  <tr> 
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">Frame Window</font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr> 
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td> 
+      <div align="center">| </div>
+    </td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr> 
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap><font face="MS Sans Serif" size="-1">Client Window</font></th>
+        </tr>
+      </table>
+    </td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr> 
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td> 
+      <div align="center">|</div>
+    </td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr> 
+    <td colspan="5"> 
+      <hr noshade>
+    </td>
+  </tr>
+  <tr> 
+    <td> 
+      <div align="center">|</div>
+    </td>
+    <td> 
+      <div align="center">|</div>
+    </td>
+    <td> 
+      <div align="center">|</div>
+    </td>
+    <td> 
+      <div align="center">|</div>
+    </td>
+    <td> 
+      <div align="center">|</div>
+    </td>
+  </tr>
+  <tr> 
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">MDI Child 
+              1 </font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">MDI Child 
+              2 </font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">MDI Child 
+              3 </font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">MDI Child 
+              4 </font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+    <td> 
+      <table border="1" cellpadding="3" align="center">
+        <tr> 
+          <th nowrap> 
+            <div align="center"><font face="MS Sans Serif" size="-1">MDI Child 
+              n </font></div>
+          </th>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<p><font face="MS Sans Serif" size="-1"><b>Figure 1. The hierachy of an MDI application</b></font></p>
+<h3><font face="Tahoma">Creating the Frame Window</font></h3>
+<p><font face="MS Sans Serif" size="-1">Now we can turn our attention to the detail. 
+  First of all you need to create a frame window. It's created the same way as 
+  the normal window: by calling CreateWindowEx. There are two major differences 
+  from a normal window.</font></p>
+<p><font face="MS Sans Serif" size="-1">The first difference is that you <b>MUST</b> 
+  call <font color="#000099"><b>DefFrameProc</b></font> instead of <font color="#990099"> 
+  <b> DefWindowProc</b></font> to process the Windows messages your window don't 
+  want to handle. This is one way to let Windows do the dirty job of maintaining 
+  MDI application for you. If you forget to use <font color="#000099"> <b>DefFrameProc</b></font>, 
+  your application won't get the MDI feature. Period. <font color="#000099"><b>DefFrameProc</b></font> 
+  has the following syntax:</font></p>
+<blockquote> 
+  <pre align="left"><font face="MS Sans Serif" size="-1"><b>DefFrameProc proc hwndFrame:DWORD,    
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hwndClient:DWORD,
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;uMsg:DWORD, 
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;wParam:DWORD, 
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lParam:DWORD</b></font></pre>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">If you compare <font color="#003399"><b>DefFrameProc</b></font> 
+  with <font color="#000099"><b>DefWindowProc</b></font>, you'll notice that the 
+  only difference between them is that <font color="#000099"><b>DefFrameProc</b></font> 
+  has 5 parameters while <font color="#003399"><b>DefWindowProc</b></font> has 
+  only 4. The extra parameter is the handle to the client window. This handle 
+  is necessary so Windows can send MDI-related messages to the client window.</font></p>
+<p><font face="MS Sans Serif" size="-1">The second difference is that, you must 
+  call <font color="#000099"><b>TranslateMDISysAccel</b></font> in the message 
+  loop of your frame window. This is necessary if you want Windows to handle MDI-related 
+  accelerator key strokes such as Ctrl+F4, Ctrl+Tab for you. It has the following 
+  syntax: </font></p>
+<blockquote> 
+  <pre><font face="MS Sans Serif" size="-1"><b>TranslateMDISysAccel proc hwndClient:DWORD,
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lpMsg:DWORD </b></font></pre>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">The first parameter is the handle to the 
+  client window. This should not come as a surprise to you because it's the client 
+  window that is the parent of all MDI child windows. The second parameter is 
+  the address of the MSG structure you filled by calling <font color="#000099"><b>GetMessage</b></font>. 
+  The idea is to pass the MSG structure to the client window so it could examine 
+  if the MSG structure contains the MDI-related keypresses. If so, it processes 
+  the message itself and returns a non-zero value, otherwise it returns FALSE.</font></p>
+<p><font face="MS Sans Serif" size="-1">The steps in creating the frame window 
+  can be summarized as follows:</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Fill in the WNDCLASSEX structure as 
+    usual</font></li>
+  <li><font face="MS Sans Serif" size="-1">Register the frame window class by 
+    calling <font color="#000099"><b>RegisterClassEx</b></font></font></li>
+  <li><font face="MS Sans Serif" size="-1">Create the frame window by calling 
+    <font color="#000099"> <b>CreateWindowEx</b></font></font></li>
+  <li><font face="MS Sans Serif" size="-1">Within the message loop, call <font color="#000099"><b>TranslateMDISysAccel</b></font>.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Within the window procedure, pass the 
+    unprocessed messages to <font color="#000099"><b>DefFrameProc</b></font> instead 
+    of <font color="#000099"><b>DefWindowProc</b></font>.</font></li>
+</ol>
+<h3><font face="Tahoma">Creating the Client Window</font></h3>
+<p><font face="MS Sans Serif" size="-1">Now that we have the frame window, we 
+  can create the client window. The client window class is pre-registered by Windows. 
+  The class name is &quot;MDICLIENT&quot;. You also need to pass the address of 
+  a <font color="#990099"><b>CLIENTCREATESTRUCT</b></font> structure to <font color="#000099"><b>CreateWindowEx</b></font>. 
+  This structure has the following definition:</font></p>
+<blockquote> 
+  <pre><font face="MS Sans Serif" size="-1"><b>CLIENTCREATESTRUCT struct
+   </b></font><b><font face="MS Sans Serif" size="-1">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hWindowMenu    dd ?
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;idFirstChild    dd ?
+CLIENTCREATESTRUCT ends</font></b></pre>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1"><b>hWindowMenu</b></font><font face="MS Sans Serif" size="-1"> 
+  is the handle to the submenu that Windows will append the list of MDI child 
+  window names. This feature requires a little explanation. If you ever use an 
+  MDI application like Microsoft Word before, you'll notice that there is a submenu 
+  named &quot;window&quot; which, on activation, displays various menuitems related 
+  to window management and at the bottom, the list of the MDI child window currently 
+  opened. That list is internally maintained by Windows itself: you don't have 
+  to do anything special for it. Just pass the handle of the submenu you want 
+  the list to appear in <b>hWindowMenu</b> and Windows will handle the rest. Note 
+  that the submenu can be <b>ANY</b> submenu:it doesn't have to be the one that 
+  is named &quot;window&quot;. The bottom line is that, you <b>should</b> pass 
+  the handle to the submenu you want the window list to appear. If you don't want 
+  the list, just put NULL in <b>hWindowMenu</b>. You get the handle to the submenu 
+  by calling <font color="#000099"><b>GetSubMenu</b></font>.</font></p>
+<p><font face="MS Sans Serif" size="-1"><b>idFirstChild</b> is the ID of the <b>first</b> 
+  MDI child window. Windows increments the ID for each new MDI child window the 
+  application created. For example, if you pass 100 to this field, the first MDI 
+  child window will have the ID of 100, the second one will have the ID of 101 
+  and so on. This ID is sent to the frame window via WM_COMMAND when the MDI child 
+  window is selected from the window list. Normally you'll pass this &quot;unhandled&quot; 
+  WM_COMMAND messages to DefFrameProc. I use the word &quot;unhandled&quot; because 
+  the menuitems in the window list are not created by your application thus your 
+  application doesn't know their IDs and doesn't have the handler for them. This 
+  is another special case for the MDI frame window: if you have the window list, 
+  you must modify your WM_COMMAND handler a bit like this:</font></p>
+<blockquote> 
+  <pre><b><font face="MS Sans Serif" size="-1">.elseif uMsg==WM_COMMAND<br>      .if lParam==0			; this message is generated from a menu
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mov eax,wParam<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.if ax==IDM_CASCADE<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.....<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.elseif ax==IDM_TILEVERT<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.....
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.else<br><font color="#CC0033">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke DefFrameProc, hwndFrame, hwndClient, uMsg,wParam, lParam<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ret</font><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.endif</font></b></pre>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">Normally, you would just ignore the messages 
+  from unhandled cases. But In the MDI case, if you ignore them, when the user 
+  clicks on the name of an MDI child window in the window list, that window won't 
+  become active. You need to pass them to <font color="#003399"><b>DefFrameProc</b></font> 
+  so they can be handled properly.</font></p>
+<p><font face="MS Sans Serif" size="-1">A caution on the value of <b>idFirstChild</b>: 
+  you should not use 0. Your window list will not behave properly, ie. the check 
+  mark will not appear in front of the name of the first MDI child even though 
+  it's active. Choose a safe value such as 100 or above.</font></p>
+<p><font face="MS Sans Serif" size="-1">Having filled in the CLIENTCREATESTRUCT 
+  structure, you can create the client window by calling <font color="#000099"><b>CreateWindowEx</b></font> 
+  with the predefined class name,&quot;MDICLIENT&quot;, and passing the address 
+  of the CLIENTCREATESTRUCT structure in lParam. You must also specify the handle 
+  to the frame window in the hWndParent parameter so Windows knows the parent-child 
+  relationship between the frame window and the client window. The window styles 
+  you should use are: WS_CHILD ,WS_VISIBLE and WS_CLIPCHILDREN. If you forget 
+  WS_VISIBLE, you won't see the MDI child windows even if they were created successfully.</font></p>
+<p><font face="MS Sans Serif" size="-1">The steps in creating the client window 
+  are as follows:</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Obtain the handle to the submenu that 
+    you want to append the window list to.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Put the value of the menu handle along 
+    with the value you want to use as the ID of the first MDI child window in 
+    a CLIENTCREATESTRUCT structure</font></li>
+  <li><font face="MS Sans Serif" size="-1">call CreateWindowEx with the class 
+    name &quot;MDICLIENT&quot;, passing the address of the CLIENTCREATESTRUCT 
+    structure you just filled in in lParam.</font></li>
+</ol>
+<h3><font face="Tahoma">Creating the MDI Child Window</font></h3>
+<p><font face="MS Sans Serif" size="-1">Now you have both the frame window and 
+  the client window. The stage is now ready for the creation of the MDI child 
+  window. There are two ways to do that.</font></p>
+<ul>
+  <li><font face="MS Sans Serif" size="-1">You can send WM_MDICREATE message to<b> 
+    the client window</b>, passing the address of a structure of type MDICREATESTRUCT 
+    in wParam. This is the easiest and the usual method of MDI child window creation.</font> 
+    <blockquote> 
+      <pre><font face="MS Sans Serif" size="-1"><b>.data?<br>&nbsp;&nbsp;&nbsp;&nbsp;mdicreate MDICREATESTRUCT &lt;&gt;<br>&nbsp;&nbsp;&nbsp;&nbsp;....<br>.code<br>&nbsp;&nbsp;&nbsp;&nbsp;.....<br>&nbsp;&nbsp;&nbsp;&nbsp;[fill the members of mdicreate]<br>&nbsp;&nbsp;&nbsp;&nbsp;......
+&nbsp;&nbsp;&nbsp;&nbsp;invoke SendMessage, hwndClient, WM_MDICREATE,addr mdicreate,0</b></font></pre>
+    </blockquote>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#003399">SendMessage</font></b> 
+      will return the handle of the newly created MDI child window if successful. 
+      You don't need to save the handle though. You can obtain it by other means 
+      if you want to. MDICREATESTRUCT has the following definition.</font></p>
+  </li>
+  <blockquote> <font face="MS Sans Serif" size="-1"><b>MDICREATESTRUCT STRUCT<br>
+    szClass &nbsp;&nbsp;DWORD ?<br>
+    szTitle&nbsp;&nbsp;&nbsp;&nbsp; DWORD ?<br>
+    hOwner &nbsp;&nbsp;&nbsp;DWORD ?<br>
+    x &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DWORD 
+    ?<br>
+    y &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DWORD 
+    ?<br>
+    lx &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DWORD 
+    ?<br>
+    ly &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DWORD 
+    ?<br>
+    style &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DWORD ?<br>
+    lParam &nbsp;&nbsp;&nbsp;&nbsp;DWORD ?<br>
+    MDICREATESTRUCT ENDS</b></font></blockquote>
+</ul>
+<blockquote> 
+  <table border="1" cellpadding="3">
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">szClass</font></th>
+      <td><font face="MS Sans Serif" size="-1">the address of the window class 
+        you want to use as the template for the MDI child window.</font></td>
+    </tr>
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">szTitle</font></th>
+      <td><font face="MS Sans Serif" size="-1">the address of the text you want 
+        to appear in the title bar of the child window</font></td>
+    </tr>
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">hOwner</font></th>
+      <td><font face="MS Sans Serif" size="-1">the instance handle of the application</font></td>
+    </tr>
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">x,y,lx,ly</font></th>
+      <td><font face="MS Sans Serif" size="-1">the upper left coordinate and the 
+        width and height of the child window</font></td>
+    </tr>
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">style</font></th>
+      <td><font face="MS Sans Serif" size="-1">child window style. If you create 
+        the client window with MDIS_ALLCHILDSTYLES, you can use any window style. 
+        </font></td>
+    </tr>
+    <tr> 
+      <th nowrap><font face="MS Sans Serif" size="-1">lParam</font></th>
+      <td><font face="MS Sans Serif" size="-1">an application-defined 32-bit value. 
+        This is a way of sharing values among MDI windows. If you don't need to 
+        use it, set it to NULL</font></td>
+    </tr>
+  </table>
+</blockquote>
+<ul>
+  <li><font face="MS Sans Serif" size="-1">You can call <font color="#003399"><b>CreateMDIWindow</b></font>. 
+    This function has the following syntax:</font> </li>
+</ul>
+<ul>
+  <blockquote> 
+    <pre><font face="MS Sans Serif" size="-1"><b>CreateMDIWindow proto lpClassName:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lpWindowName:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dwStyle:DWORD
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;y:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nWidth:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nHeight:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hWndParent:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hInstance:DWORD<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lParam:DWORD</b></font></pre>
+  </blockquote>
+</ul>
+<blockquote> 
+  <p><font face="MS Sans Serif" size="-1">If you look closely at the parameters, 
+    you'll find that they are identical to the members of MDICREATESTRUCT structure, 
+    except for the <b>hWndParent</b>. Essentially it's the same number of parameters 
+    you pass with WM_MDICREATE. MDICREATESTRUCT doesn't have the <b>hWndParent</b> 
+    field because you must pass the whole structure to the correct client window 
+    with SendMessage anyway.</font></p>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">At this point, you may have some questions: 
+  which method should I use? What is the difference between the two? Here is the 
+  answer: </font></p>
+<p><font face="MS Sans Serif" size="-1">The WM_MDICREATE method can only create 
+  the MDI child window in the same thread as the calling code. For example, if 
+  your application has 2 threads, and the first thread creates the MDI frame window, 
+  if the second thread wants to create an MDI child, it must do so with CreateMDIChild: 
+  sending WM_MDICREATE message to the first thread won't work. If your application 
+  is single-threaded, you can use either method. (Thanks yap for the correction 
+  - 04/24/2002)</font></p>
+<p><font face="MS Sans Serif" size="-1">A little more detail needs to be covered 
+  about the window procedure of the MDI child. As with the frame window case, 
+  you must not call <font color="#000099"><b>DefWindowProc</b></font> to handle 
+  the unprocessed messages. Instead, you must use <font color="#000099"><b>DefMDIChildProc</b></font>. 
+  This function has exactly the same parameters as <font color="#000099"><b>DefWindowProc</b></font>.</font></p>
+<p><font face="MS Sans Serif" size="-1">In addition to WM_MDICREATE, there are 
+  other MDI-related window messages. I'll list them below:</font></p>
+<table border="1" cellpadding="3" align="center">
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDIACTIVATE</font></th>
+    <td><font face="MS Sans Serif" size="-1">This message can be sent by the application 
+      to the client window to instruct the client window to activate the selected 
+      MDI child. When the client window receives the message, it activates the 
+      selected MDI child window and sends WM_MDIACTIVATE to the child being deactivated 
+      and activated. The use of this message is two-fold: it can be used by the 
+      application to activate the desired child window. And it can be used by 
+      the MDI child window itself as the indicator that it's being activated/deactivated. 
+      For example, if each MDI child window has different menu, it can use this 
+      opportunity to change the menu of the frame window when it's activated/deactivated.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDICASCADE<br>
+      WM_MDITILE<br>
+      WM_MDIICONARRANGE </font></th>
+    <td><font face="MS Sans Serif" size="-1">These messages handle the arrangement 
+      of the MDI child windows. For example, if you want the MDI child windows 
+      to arrange themselves in cascading style, send WM_MDICASCADE to the client 
+      window. </font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDIDESTROY</font></th>
+    <td><font face="MS Sans Serif" size="-1">Send this message to the client window 
+      to destroy an MDI child window. You should use this message instead of calling 
+      <font color="#000099"> <b>DestroyWindow</b></font> because if the MDI child 
+      window is maxmized, this message will restore the tile of the frame window. 
+      If you use <font color="#000099"><b>DestroyWindow</b></font>, the title 
+      of the frame window will not be restored.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDIGETACTIVE</font></th>
+    <td><font face="MS Sans Serif" size="-1">Send this message to retrieve the 
+      handle of the currently active MDI child window.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDIMAXIMIZE<br>
+      WM_MDIRESTORE </font></th>
+    <td><font face="MS Sans Serif" size="-1">Send WM_MDIMAXIMIZE to maximize the 
+      MDI child window and WM_MDIRESTORE to restore it to previous state. Always 
+      use these messages for the operations. If you use ShowWindow with SW_MAXIMIZE, 
+      the MDI child window will maximize fine but it will have the problem when 
+      you try to restore it to previous size. You can minimize the MDI child window 
+      with ShowWindow without problem, however.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDINEXT</font></th>
+    <td><font face="MS Sans Serif" size="-1">Send this message to the client window 
+      to activate the next or the previous MDI child window according to the values 
+      in wParam and lParam.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDIREFRESHMENU</font></th>
+    <td><font face="MS Sans Serif" size="-1">Send this message to the client window 
+      to refresh the menu of the frame window. Note that you must call <font color="#000099"> 
+      <b>DrawMenuBar</b></font> to update the menu bar after sending this message.</font></td>
+  </tr>
+  <tr> 
+    <th nowrap><font face="MS Sans Serif" size="-1">WM_MDISETMENU</font></th>
+    <td><font face="MS Sans Serif" size="-1">Send this message to the client window 
+      to replace the whole menu of the frame window or just the window submenu. 
+      You must use this message instead of <font color="#000099"><b>SetMenu</b></font>. 
+      After sending this message, you must call <font color="#000099"><b>DrawMenuBar</b></font> 
+      to update the menu bar. Normally you will use this message when the active 
+      MDI child window has its own menu and you want it to replace the menu of 
+      the frame window while the MDI child window is active.</font></td>
+  </tr>
+</table>
+<p><font face="MS Sans Serif" size="-1">I'll review the steps in creating an MDI 
+  application for you again below.</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Register the window classes, both the 
+    frame window class and the MDI child window class</font></li>
+  <li><font face="MS Sans Serif" size="-1">Create the frame window with <font color="#000099"><b>CreateWindowEx</b></font>.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Within the message loop, call <font color="#003399"><b>TranslateMDISysAccel</b></font> 
+    to process the MDI-related accelerator keys</font></li>
+  <li><font face="MS Sans Serif" size="-1">Within the window procedure of the 
+    frame window, call <font color="#000099"><b>DefFrameProc</b></font> to handle 
+    <b>ALL</b> messages unhandled by your code.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Create the client window by calling 
+    <font color="#000099"> <b>CreateWindowEx</b></font> using the name of the 
+    predefined window class, &quot;MDICLIENT&quot;, passing the address of a CLIENTCREATESTRUCT 
+    structure in lParam. Normally, you would create the client window within the 
+    WM_CREATE handler of the frame window proc</font></li>
+  <li><font face="MS Sans Serif" size="-1">You can create an MDI child window 
+    by sending WM_MDICREATE to the client window or, alternatively, by calling 
+    <font color="#000099"> <b>CreateMDIWindow</b></font>. </font></li>
+  <li><font face="MS Sans Serif" size="-1">Within the window proc of the MDI child 
+    window, pass all unhandled messages to <font color="#003366"><b>DefMDIChildProc</b></font>.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Use MDI version of the messages if 
+    it exists. For example, use WM_MDIDESTROY instead of calling <font color="#003366"><b>DestroyWindow</b></font></font></li>
+</ol>
+<h3><font face="MS Sans Serif" size="-1">Example:</font></h3>
+<pre>.386 <br>.model flat,stdcall <br>option casemap:none <br>include \masm32\include\windows.inc    <br>include \masm32\include\user32.inc 
+include \masm32\include\kernel32.inc 
+includelib \masm32\lib\user32.lib 
+includelib \masm32\lib\kernel32.lib 
+WinMain proto :DWORD,:DWORD,:DWORD,:DWORD    
+
+.const 
+IDR_MAINMENU 	equ 101 
+IDR_CHILDMENU	equ 102 
+IDM_EXIT 		equ 40001 
+IDM_TILEHORZ	equ 40002 
+IDM_TILEVERT	equ 40003
+IDM_CASCADE	equ 40004 
+IDM_NEW 		equ 40005 
+IDM_CLOSE	equ 40006 
+
+.data 
+ClassName 	db "MDIASMClass",0 
+MDIClientName	db "MDICLIENT",0 
+MDIChildClassName	db "Win32asmMDIChild",0 
+MDIChildTitle	db "MDI Child",0 
+AppName		db "Win32asm MDI Demo",0 
+ClosePromptMessage	db "Are you sure you want to close this window?",0
+
+.data? 
+hInstance 	dd ? 
+hMainMenu 	dd ? 
+hwndClient 	dd ? 
+hChildMenu 	dd ? 
+mdicreate		MDICREATESTRUCT <> 
+hwndFrame 	dd ? 
+
+.code 
+start: 
+	invoke GetModuleHandle, NULL    
+	mov hInstance,eax 
+	invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT 
+	invoke ExitProcess,eax 
+
+WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD    
+	LOCAL wc:WNDCLASSEX 
+	LOCAL msg:MSG 
+	;=============================================    
+	; Register the frame window class 
+	;=============================================    
+	mov wc.cbSize,SIZEOF WNDCLASSEX 
+	mov wc.style, CS_HREDRAW or CS_VREDRAW 
+	mov wc.lpfnWndProc,OFFSET WndProc 
+	mov wc.cbClsExtra,NULL 
+	mov wc.cbWndExtra,NULL 
+	push hInstance
+	pop wc.hInstance 
+	mov wc.hbrBackground,COLOR_APPWORKSPACE 
+	mov wc.lpszMenuName,IDR_MAINMENU
+	mov wc.lpszClassName,OFFSET ClassName
+	invoke LoadIcon,NULL,IDI_APPLICATION 
+	mov wc.hIcon,eax 
+	mov wc.hIconSm,eax 
+	invoke LoadCursor,NULL,IDC_ARROW 
+	mov wc.hCursor,eax    
+	invoke RegisterClassEx, addr wc 
+	;================================================    
+	; Register the MDI child window class 
+	;================================================    
+	mov wc.lpfnWndProc,offset ChildProc 
+	mov wc.hbrBackground,COLOR_WINDOW+1 
+	mov wc.lpszClassName,offset MDIChildClassName 
+	invoke RegisterClassEx,addr wc 
+	invoke CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\ 
+			WS_OVERLAPPEDWINDOW or WS_CLIPCHILDREN,CW_USEDEFAULT,\    
+			CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,0,\ 
+			hInst,NULL 
+	mov hwndFrame,eax    
+<font color="#990033">	invoke LoadMenu,hInstance, IDR_CHILDMENU 
+	mov hChildMenu,eax </font>
+	invoke ShowWindow,hwndFrame,SW_SHOWNORMAL 
+	invoke UpdateWindow, hwndFrame 
+	.while TRUE 
+		invoke GetMessage,ADDR msg,NULL,0,0 
+		.break .if (!eax) 
+		invoke TranslateMDISysAccel,hwndClient,addr msg 
+		.if !eax 
+			invoke TranslateMessage, ADDR msg 
+			invoke DispatchMessage, ADDR msg 
+		.endif 
+	.endw 
+	invoke DestroyMenu, hChildMenu 
+	mov eax,msg.wParam 
+	ret 
+WinMain endp 
+
+WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM 
+	LOCAL ClientStruct:CLIENTCREATESTRUCT    
+	.if uMsg==WM_CREATE 
+		invoke GetMenu,hWnd 
+		mov hMainMenu,eax 
+		invoke GetSubMenu,hMainMenu,1    
+		mov ClientStruct.hWindowMenu,eax 
+		mov ClientStruct.idFirstChild,100 
+		INVOKE CreateWindowEx,NULL,ADDR MDIClientName,NULL,\ 
+				WS_CHILD or WS_VISIBLE or WS_CLIPCHILDREN,CW_USEDEFAULT,\
+				CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,hWnd,NULL,\ 
+				hInstance,addr ClientStruct    
+		mov hwndClient,eax 
+		;======================================= 
+		; Initialize the MDICREATESTRUCT 
+		;======================================= 
+		mov mdicreate.szClass,offset MDIChildClassName 
+		mov mdicreate.szTitle,offset MDIChildTitle 
+		push hInstance    
+		pop mdicreate.hOwner 
+		mov mdicreate.x,CW_USEDEFAULT 
+		mov mdicreate.y,CW_USEDEFAULT    
+		mov mdicreate.lx,CW_USEDEFAULT 
+		mov mdicreate.ly,CW_USEDEFAULT 
+	.elseif uMsg==WM_COMMAND    
+		.if lParam==0 
+			mov eax,wParam 
+			.if ax==IDM_EXIT 
+				invoke SendMessage,hWnd,WM_CLOSE,0,0    
+			.elseif ax==IDM_TILEHORZ 
+				invoke SendMessage,hwndClient,WM_MDITILE,MDITILE_HORIZONTAL,0 
+			.elseif ax==IDM_TILEVERT 
+				invoke SendMessage,hwndClient,WM_MDITILE,MDITILE_VERTICAL,0    
+			.elseif ax==IDM_CASCADE 
+				invoke SendMessage,hwndClient,WM_MDICASCADE,MDITILE_SKIPDISABLED,0	   
+			.elseif ax==IDM_NEW 
+				invoke SendMessage,hwndClient,WM_MDICREATE,0,addr mdicreate   
+			.elseif ax==IDM_CLOSE 
+				invoke SendMessage,hwndClient,WM_MDIGETACTIVE,0,0 
+				invoke SendMessage,eax,WM_CLOSE,0,0 
+			.else 
+				invoke DefFrameProc,hWnd,hwndClient,uMsg,wParam,lParam	   
+				ret
+			.endif 
+		.endif 
+	.elseif uMsg==WM_DESTROY 
+		invoke PostQuitMessage,NULL 
+	.else 
+		invoke DefFrameProc,hWnd,hwndClient,uMsg,wParam,lParam 
+		ret 
+	.endif 
+	xor eax,eax 
+	ret 
+WndProc endp 
+
+ChildProc proc hChild:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD 
+	.if uMsg==WM_MDIACTIVATE    
+		mov eax,lParam 
+		.if eax==hChild 
+			invoke GetSubMenu,hChildMenu,1 
+			mov edx,eax 
+			invoke SendMessage,hwndClient,WM_MDISETMENU,hChildMenu,edx 
+		.else 
+			invoke GetSubMenu,hMainMenu,1    
+			mov edx,eax 
+			invoke SendMessage,hwndClient,WM_MDISETMENU,hMainMenu,edx 
+		.endif 
+		invoke DrawMenuBar,hwndFrame 
+	.elseif uMsg==WM_CLOSE   
+		invoke MessageBox,hChild,addr ClosePromptMessage,addr AppName,MB_YESNO 
+		.if eax==IDYES    
+			invoke SendMessage,hwndClient,WM_MDIDESTROY,hChild,0 
+		.endif 
+	.else 
+		invoke DefMDIChildProc,hChild,uMsg,wParam,lParam    
+		ret 
+	.endif 
+	xor eax,eax 
+	ret 
+ChildProc endp 
+end start 
+</pre>
+<h3><font face="MS Sans Serif" size="-1">Analysis:</font></h3>
+<p><font face="MS Sans Serif" size="-1">The first thing the program does is to 
+  register the window classes of the frame window and the MDI child window. After 
+  that, it calls CreateWindowEx to create the frame window. Within the WM_CREATE 
+  handler of the frame window, we create the client window:</font> <br>
+</p>
+<pre>
+	LOCAL ClientStruct:CLIENTCREATESTRUCT 
+	.if uMsg==WM_CREATE 
+		invoke GetMenu,hWnd    
+		mov hMainMenu,eax 
+		invoke GetSubMenu,hMainMenu,1 
+<font color="#990033"><b>		mov ClientStruct.hWindowMenu,eax    
+		mov ClientStruct.idFirstChild,100 </b></font>
+		invoke CreateWindowEx,NULL,ADDR MDIClientName,NULL,\    
+			WS_CHILD or WS_VISIBLE or WS_CLIPCHILDREN,CW_USEDEFAULT,\ 
+			CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,hWnd,NULL,\    
+			hInstance,<font color="#990033"><b>addr ClientStruct</b></font> 
+		mov hwndClient,eax 
+</pre>
+<p><font face="MS Sans Serif" size="-1">It calls <font color="#000099"><b>GetMenu</b></font> 
+  to obtain the handle to the menu of the frame window, to be used in the <font color="#000066"><b>GetSubMenu</b></font> 
+  call. Note that we pass the value 1 to <font color="#000099"><b>GetSubMenu</b></font> 
+  because the submenu we want the window list to appear is the second submenu. 
+  Then we fill the members of the CLIENTCREATESTRUCT structure.</font><br>
+  <font face="MS Sans Serif" size="-1">Next, we initialize the MDICLIENTSTRUCT 
+  structure. Note that we don't need to do it here. It's only convenient to do 
+  it in WM_CREATE.</font></p>
+<pre>	mov mdicreate.szClass,offset MDIChildClassName 
+	mov mdicreate.szTitle,offset MDIChildTitle 
+	push hInstance 
+	pop mdicreate.hOwner 
+	mov mdicreate.x,CW_USEDEFAULT    
+	mov mdicreate.y,CW_USEDEFAULT 
+	mov mdicreate.lx,CW_USEDEFAULT 
+	mov mdicreate.ly,CW_USEDEFAULT
+</pre>
+<p><font face="MS Sans Serif" size="-1">After the frame window is created (and 
+  also the client window), we call <font color="#000099"><b>LoadMenu</b></font> 
+  to load the child window menu from the resource. We need to get this menu handle 
+  so we can replace the menu of the frame window with it when an MDI child window 
+  is present. Don't forget to call <font color="#000099"><b>DestroyMenu</b></font> 
+  on the handle before the application exits to Windows. Normally Windows will 
+  free the menu associated with a window automatically when the application exits 
+  but in this case, the child window menu is not associated with any window thus 
+  it will still occupy valuable memory even after the application exits.</font><br>
+</p>
+<pre>	invoke LoadMenu,hInstance, IDR_CHILDMENU 
+	mov hChildMenu,eax 
+	........
+	invoke DestroyMenu, hChildMenu
+</pre>
+<p><font face="MS Sans Serif" size="-1">Within the message loop, we call <font color="#000099"><b>TranslateMDISysAccel</b></font>.</font></p>
+<pre>	.while TRUE 
+		invoke GetMessage,ADDR msg,NULL,0,0 
+		.break .if (!eax) 
+		<font color="#990066"><b>invoke TranslateMDISysAccel,hwndClient,addr msg</b></font> 
+		.if !eax 
+			invoke TranslateMessage, ADDR msg 
+			invoke DispatchMessage, ADDR msg 
+		.endif 
+	.endw </pre>
+<p><font face="MS Sans Serif" size="-1">If <font color="#000099"><b>TranslateMDISysAccel</b></font> 
+  returns a non-zero value, it means the message was already handled by Windows 
+  itself so you don't need to do anything to the message. If it returns 0, the 
+  message is not MDI-related and thus should be handled as usual.</font><br>
+</p>
+<pre>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM 
+	.....
+	.else 
+<font color="#990033"><b>		invoke DefFrameProc,hWnd,hwndClient,uMsg,wParam,lParam 
+		ret </b></font>
+	.endif
+	xor eax,eax
+	ret
+WndProc endp</pre>
+<p><font face="MS Sans Serif" size="-1">Note that within the window procedure 
+  of the frame window, we call DefFrameProc to handle the messages we are not 
+  interested in.</font></p>
+<p><font face="MS Sans Serif" size="-1">The bulk of the window procedure is the 
+  WM_COMMAND handler. When the user selects &quot;New&quot; from the File menu, 
+  we create a new MDI child window.</font></p>
+<pre>	.elseif ax==IDM_NEW 
+		invoke SendMessage,hwndClient,WM_MDICREATE,0,addr mdicreate
+</pre>
+<p><font face="MS Sans Serif" size="-1">In our example, we create the MDI child 
+  window by sending WM_MDICREATE to the client window, passing the address of 
+  the MDICREATESTRUCT structure in lParam.</font></p>
+<pre>ChildProc proc hChild:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD 
+	.if uMsg==WM_MDIACTIVATE    
+		mov eax,lParam 
+		.if eax==hChild 
+			invoke GetSubMenu,hChildMenu,1 
+			mov edx,eax 
+			invoke SendMessage,hwndClient,WM_MDISETMENU,hChildMenu,edx 
+		.else 
+			invoke GetSubMenu,hMainMenu,1    
+			mov edx,eax 
+			invoke SendMessage,hwndClient,WM_MDISETMENU,hMainMenu,edx 
+		.endif    
+		invoke DrawMenuBar,hwndFrame </pre>
+<p><font face="MS Sans Serif" size="-1">When the MDI child window is created, 
+  it monitors WM_MDIACTIVATE to see if it's the active window. It does this by 
+  comparing the value of the lParam which contains the handle of the active child 
+  window with its own handle. If they match, it's the active window and the next 
+  step is to replace the menu of the frame window to its own. Since the original 
+  menu will be replaced, you have to tell Windows again in which submenu the window 
+  list should appear. That's why we must call <font color="#000099"><b>GetSubMenu</b></font> 
+  again to retrieve the handle to the submenu. We send WM_MDISETMENU message to 
+  the client window to achieve the desired result. wParam of WM_MDISETMENU contains 
+  the handle of the menu you would like to replace the original menu. lParam contains 
+  the handle of the submenu you want the window list to appear. Right after sending 
+  WM_MDISETMENU, we call <font color="#000099"><b>DrawMenuBar</b></font> to refresh 
+  the menu else your menu will be a mess.</font></p>
+<pre>	.else 
+		invoke DefMDIChildProc,hChild,uMsg,wParam,lParam 
+		ret 
+	.endif </pre>
+<pre><font face="MS Sans Serif" size="-1">Within the window procedure of the MDI    child window, you must pass all unhandled messages to <font color="#000099"><b>DefMDIChildProc</b></font>    instead of <font color="#003399"><b>DefWindowProc</b></font>.</font></pre>
+<pre>	.elseif ax==IDM_TILEHORZ 
+		invoke SendMessage,hwndClient,WM_MDITILE,MDITILE_HORIZONTAL,0  
+	.elseif ax==IDM_TILEVERT 
+		invoke SendMessage,hwndClient,WM_MDITILE,MDITILE_VERTICAL,0  
+	.elseif ax==IDM_CASCADE 
+		invoke SendMessage,hwndClient,WM_MDICASCADE,MDITILE_SKIPDISABLED,0	 </pre>
+<p><font face="MS Sans Serif" size="-1">When the user selects one of the menuitems 
+  in the window submenu, we send the corresponding message to the client window. 
+  If the user chooses to tile the windows, we send WM_MDITILE to the client window, 
+  specifying in wParam what kind of tiling we want. WM_CASCADE is similar.</font></p>
+<pre>	.elseif ax==IDM_CLOSE 
+		invoke SendMessage,hwndClient,WM_MDIGETACTIVE,0,0    
+		invoke SendMessage,eax,WM_CLOSE,0,0 </pre>
+<pre><font face="MS Sans Serif" size="-1">If the user chooses &quot;Close&quot;    menuitem, we must obtain the handle of the currently active MDI child window    first by sending WM_MDIGETACTIVE to the client window. The return value in eax    is the handle of the currently active MDI child window. After that, we send    WM_CLOSE to that window.</font></pre>
+<pre>	.elseif uMsg==WM_CLOSE 
+		invoke MessageBox,hChild,addr ClosePromptMessage,addr AppName,MB_YESNO 
+		.if eax==IDYES 
+			invoke SendMessage,hwndClient,WM_MDIDESTROY,hChild,0    
+		.endif </pre>
+<p><font face="MS Sans Serif" size="-1">Within the window procedure of the MDI 
+  child, when WM_CLOSE is received, it displays a message box asking the user 
+  if he really wants to close the window. If the answer is yes, we send WM_MDIDESTROY 
+  to the client window. WM_MDIDESTROY closes the MDI child window and restores 
+  the title of the frame window.</font></p>
+<hr>
+<p align="center"><font face="MS Sans Serif" size="-1"><b>[<a href="http://win32asm.cjb.net">Iczelion's 
+  Win32 Assembly Homepage</a>]</b></font></p>
+<p>&nbsp;</p>
+<pre>&nbsp;</pre>
+</body>
+</html>

@@ -1,0 +1,486 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 15: Multithreading Programming</title>
+</head>
+<body text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFFCC"><font size=+2>Tutorial
+15: Multithreading Programming</font></font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>We will
+learn how to create a multithreading program in this tutorial. We also
+study the communication methods between the threads.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1><font color="#FFFFFF">Download
+the example </font><font color="#000000"><a href="files/tut15.zip">here</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Theory:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>In previous
+tutorial, you learn the a process consists of at least one thread: the
+primary thread. A thread is a chain of execution. You can also create additional
+threads in your program. You can view multithreading as multitasking within
+one program. In term of implementation, a thread is a function that runs
+concurrently with the main program. You can run several instances of the
+same function or you can run several functions simultaneously depending
+on your requirement. Multithreading is specific to Win32, no Win16 counterpart
+exists.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Threads
+run in the same process so they can access any resources in the process
+such as global variables, handles etc. However, each thread has its own
+stack so local variables in each thread are private. Each thread also owns
+its private register set so when Windows switches to other threads, the
+thread can "remember" its last status and can "resume" the task when it
+gains control again. This is handled internally by Windows.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>We
+can divide threads into two caterories:</font></font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>User interface
+thread: This type of thread creates its own window so it receives windows
+messages. It can respond to the user via its own window hence the name.
+This type of thread is subject to Win16 Mutex rule which allows only one
+user interface thread in 16-bit user and gdi kernel. While a user interface
+thread is executing code in 16-bit user and gdi kernel, other UI threads
+cannot use the service of the 16-bit user and gdi kernel. Note that this
+Win16 Mutex is specific to Windows 95 since underneath, Windows 95 API
+functions thunk down to 16-bit code. Windows NT has no Win16 Mutex so the
+user interface threads under NT work more smoothly than under Windows 95.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Worker
+thread: This type of thread does not create a window so it cannot receive
+any windows message. It exists primarily to do the assigned job in the
+background hence the name worker thread.</font></font></font></li>
+</ol>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>I advise
+the following strategy when using multithreading capability of Win32: Let
+the primary thread do user interface stuff and the other threads do the
+hard work in the background. In this way, the primary thread is like a
+Governor, other threads are like the Governor's staff. The Governor delegates
+jobs to his staff while he maintains contact with the public. The Governor
+staff obediently performs the work and reports back to the Governor. If
+the Governor were to perform every task himself, he would not be able to
+give much attention to the public or the press. That's akin to a window
+which is busy doing a lengthy job in its primary thread: it doesn't respond
+to the user until the job is completed. Such a program can benefit from
+creating an additonal thread which is responsible for the lengthy job,
+allowing the primary thread to respond to the user's commands.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>We
+can create a thread by calling CreateThread function which has the following
+syntax:</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>CreateThread
+proto lpThreadAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwStackSize:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1><font color="#000000">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font color="#FFFFCC">lpStartAddress:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpParameter:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwCreationFlags:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1><font color="#000000">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font color="#FFFFCC">lpThreadId:DWORD</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>CreateThread
+function looks a lot like CreateProcess.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpThreadAttributes</font></b><font color="#FFFFFF">&nbsp;
+--> You can use NULL if you want the thread to have default security descriptor.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">dwStackSize</font></b><font color="#000000">
+
+</font><font color="#FFFFFF">--> specify the stack size of the thread.
+If you want the thread to have the same stack size as the primary thread,
+use NULL as this parameter.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpStartAddress</font></b><font color="#FFFFFF">-->
+Address of the thread function.It's the function that will perform the
+work of the thread. This function MUST receive one and only one 32-bit
+parameter and return a 32-bit value.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpParameter</font></b><font color="#000000">&nbsp;</font><font color="#FFFFFF">
+--> The parameter you want to pass to the thread function.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">dwCreationFlags</font></b><font color="#FFFFFF">
+--> 0 means the thread runs immediately after it's created. The opposite
+is CREATE_SUSPENDED flag.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpThreadId</font></b><font color="#000000">
+
+</font><font color="#FFFFFF">--> CreateThread function will fill the thread
+ID of the newly created thread at this address.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>If
+CreateThread call is sucessful, it returns the handle of the newly created
+thread. Otherwise, it returns NULL.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>The
+thread function runs as soon as CreateThread call is success ful unless
+you specify CREATE_SUSPENDED flag in dwCreationFlags. In that case, the
+thread is suspended until ResumeThread function is called.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>When
+the thread function returns with ret instruction, Windows calls ExitThread
+function for the thread function implicitly. You can call ExitThread function
+with in your thread function yourself but there' s little point in doing
+so.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>You
+can retrieve the exit code of a thread by calling GetExitCodeThread function.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>If
+you want to terminate a thread from other thread, you can call TerminateThread
+function. But you should use this function under extreme circumstance since
+this function terminates the thread immediately without giving the thread
+any chance to clean up after itself.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Now
+let's move to the communication methods between threads.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>There
+are three of them:</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Using
+global variables</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Windows
+messages</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Event</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Threads
+share the process's resources including global variables so the threads
+can use global varibles to communicate with each other. However this method
+must be used with care. Thread synchronization must enter into consideration.
+For example, if two threads use the same structure of 10 members , what
+happens when Windows suddenly yanks the control from one of the thread
+when it was in the middle of updating the structure? The other thread will
+be left with an inconsistent data in the structure! Don't make any mistake,
+multithreading programs are harder to debug and maintain. This sort of
+bug seems to happen at random which is very hard to track down.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>You
+can also use Windows messages to communicate between threads. If the threads
+are all user interface ones, there's no problem: this method can be used
+as a two-way communication. All you have to do is defining one or more
+custom windows messages that are meaningful to the threads. You define
+a custom message by using WM_USER message as the base value say , you can
+define it like this:</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WM_MYCUSTOMMSG equ WM_USER+100h</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Windows
+will not use any value from WM_USER upward for its own messages so you
+can use the value WM_USER and above as your own custom message value.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>If
+one of the thread is a user interface thread and the other is a worker
+one, you cannot use this method as two-way communication since a worker
+thread doesn't have its own window so it doesn't have a message queue.
+You can use the following scheme:</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+User interface Thread ------> global variable(s)----> Worker thread</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Worker Thread&nbsp; ------> custom window message(s) ----> User interface
+Thread</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>In
+fact, we will use this method in our example.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>The
+last communication method is an event object. You can view an event object
+as a kind of flag. If the event object is in "unsignalled" state, the thread
+is dormant or sleeping, in this state, the thread doesn't receive CPU time
+slice. When the event object is in "signalled" state,Windows "wakes up"
+the thread and it starts performing the assigned task.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Example:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>You should
+download the example zip file and run thread1.exe. Click the "Savage Calculation"
+menu item. This will instruct the program to perform "add eax,eax " for
+600,000,000 times. Note that during that time, you cannot do anything with
+the main window: you cannot move it, you cannot activate its menu, etc.
+When the calculation is completed, a message box appears. After that the
+window accepts your command normally.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>To
+avoid this type of inconveniece to the user, we can move the "calculation"
+routine into a separate worker thread and let the primary thread continue
+with its user interface task. You can see that even though the main window
+responds more slowly than usual,&nbsp; it still responds</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>option
+casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WinMain
+proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>include
+\masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>include
+\masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>include
+\masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>IDM_CREATE_THREAD
+equ 1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>IDM_EXIT
+equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>WM_FINISH
+equ WM_USER+100h</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>ClassName
+db "Win32ASMThreadClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>AppName&nbsp;
+db "Win32 ASM MultiThreading Example",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>MenuName
+db "FirstMenu",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>SuccessString
+db "The calculation is completed!",0</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>hInstance
+HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>CommandLine
+LPSTR ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>hwnd
+HANDLE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ThreadID
+DWORD ?</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetCommandLine</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov CommandLine,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WinMain
+proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,300,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WinMain
+endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WndProc
+proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_CREATE_THREAD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,OFFSET ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateThread,NULL,NULL,eax,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ThreadID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_FINISH</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,NULL,ADDR SuccessString,ADDR AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WndProc
+endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ThreadProc
+PROC USES ecx Param:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ecx,600000000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>Loop1:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dec&nbsp; ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jz&nbsp;&nbsp; Get_out</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jmp&nbsp; Loop1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>Get_out:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostMessage,hwnd,WM_FINISH,NULL,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ThreadProc
+ENDP</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>end
+start</font></font></font></b>
+<br><font face="Arial,Helvetica"><font size=-1></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Analysis:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>The main
+program presents the user with a normal window with a menu. If the user
+selects "Create Thread" menu item, the program creates a thread as below:</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_CREATE_THREAD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,OFFSET ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateThread,NULL,NULL,eax,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ThreadID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>The
+above function creates a thread that will run a procedure named ThreadProc
+concurrently with the primary thread. After the successful call, CreateThread
+returns immediately and ThreadProc begins to run. Since we do not use thread
+handle, we should close it else there'll be some leakage of memory. Note
+that closing the thread handle doesn't terminate the thread. Its only effect
+is that we cannot use the thread handle anymore.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>ThreadProc
+PROC USES ecx Param:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ecx,600000000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>Loop1:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dec&nbsp; ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jz&nbsp;&nbsp; Get_out</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jmp&nbsp; Loop1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>Get_out:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostMessage,hwnd,WM_FINISH,NULL,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>ThreadProc
+ENDP</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>As
+you can see, ThreadProc performs a savage calculation which takes quite
+a while to finish and when it finishs it posts a WM_FINISH message to the
+main window. WM_FINISH is our custom message defined like this:</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WM_FINISH
+equ WM_USER+100h</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>You don't
+have to add WM_USER with 100h but it's safer to do so.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>The
+WM_FINISH message is meaningful only within our program. When the main
+window receives the WM_FINISH message, it respons by displaying a message
+box saying that the calculation is completed.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>You
+can create several threads in succession by selecting "Create Thread" several
+times.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>In
+this example, the communication is one-way in that only the thread can
+notify the main window. If you want the main thread to send commands to
+the worker thread, you can so as follows:</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>add a
+menu item saying something like "Kill Thread" in the menu</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>a global
+variable which is used as a command flag. TRUE=Stop the thread, FALSE=continue
+the thread</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Modify
+ThreadProc to check the value of the command flag in the loop.</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>When the
+user selects "Kill Thread" menu item, the main program will set the value
+TRUE in the command flag. When ThreadProc sees that the value of the command
+flag is TRUE, it exits the loop and returns thus ends the thread.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#006600"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<font face="Arial,Helvetica"><font size=-1></font></font>
+<p><br><font face="Arial,Helvetica"><font size=-1></font></font>
+</body>
+</html>

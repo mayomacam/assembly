@@ -1,0 +1,6 @@
+we can use decimal binary or even octal for 1,4 
+
+EBX,1
+EAX,4 
+both are in immediate mode of addressing .
+we can implement them in any number system

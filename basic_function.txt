@@ -1,0 +1,13 @@
+for example we use epicprint
+
+
+
+epicPrint:
+mov ----
+
+----
+int 80h
+
+
+
+call epicPrint  ; function call

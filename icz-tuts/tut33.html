@@ -1,0 +1,1491 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 33: RichEdit Control: Basics</title>
+<meta http-equiv="Content-Type" content="text/html; charset=">
+</head>
+
+<body bgcolor="#FFFFFF">
+<h1 align="center"><font face="Tahoma" color="#0000CC">Tutorial 33: RichEdit Control: 
+  Basics</font></h1>
+<p align="left"><font face="Tahoma" size="-1">There are lots of request on tutorials 
+  about RichEdit controls. Finally I have played with it enough to think I can 
+  write tutorials about it. So here it is: the first RichEdit tutorial. The tutorials 
+  will describe nearly everything there is to know about RichEdit control or at 
+  least as much as I know it. The amount of information is rather large so I divide 
+  it into several parts, this tutorial being the first part. In this tutorial, 
+  you'll learn what a RichEdit control is, how to create it and how to load/save 
+  data to/from it.</font></p>
+<p align="left"><font face="Tahoma" size="-1">Download <a href="files/tut33.zip">the 
+  example</a>.</font></p>
+<h3 align="left"><font face="Times New Roman, Times, serif" color="#3333CC">Theory</font></h3>
+<p align="left"><font face="Tahoma" size="-1">A richedit control can be thought 
+  of as a souped-up edit control. It provides many desirable features that are 
+  lacking from the plain simple edit control, for example, the ability to use 
+  multiple font face/size, multiple-level undo/redo, search-for-text operation, 
+  OLE-embedded objects, drag-and-drop editing support, etc. Since the richedit 
+  control has so many features, it's stored in a separate DLL. This also means 
+  that, to use it, you can't just call <font color="#336600"><b>InitCommonControls</b></font> 
+  like other common controls. You have to call <font color="#336600"><b>LoadLibrary</b></font> 
+  to load the richedit DLL.</font></p>
+<p align="left"><font face="Tahoma" size="-1">The problem is that there are three 
+  versions of richedit control up till now. Version 1,2, and 3. The table below 
+  shows you the name of the DLL for each version.</font></p>
+<table align="center" border="1">
+  <tr bgcolor="#CCFFCC"> 
+    <th nowrap><font face="MS Sans Serif" size="-1">DLL Name</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">RichEdit version</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Richedit Class Name</font></th>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">Riched32.dll</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">1.0</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">RICHEDIT</font></th>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">RichEd20.dll</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">2.0</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">RICHEDIT20A</font></th>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">RichEd20.dll</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1" color="#000000">3.0</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">RICHEDIT20A</font></th>
+  </tr>
+</table>
+<p align="left"><font face="Tahoma" size="-1">You can notice that richedit version 
+  2 and 3 use the same DLL name. They also use the same class name! This can pose 
+  a problem if you want to use specific features of richedit 3.0. Up to now, I 
+  haven't found an official method of differentiating between version 2.0 and 
+  3.0. However, there is a workaround which works ok, I'll show you later.</font></p>
+<pre align="left"><font face="Tahoma"><b><font color="#660066">.data</font></b></font>
+<font color="#660066"><b><font face="Tahoma">   RichEditDLL db &quot;RichEd20.dll&quot;,0<br>	.....<br>.data?<br>	hRichEditDLL dd ?<br>.code<br>	<font color="#006600">invoke LoadLibrary,addr RichEditDLL<br>	mov hRichEditDLL,eax</font><br>	......<br>	<font color="#006600">invoke FreeLibrary,hRichEditDLL</font></font></b></font><font color="#660066"><b><font face="Tahoma"><font color="#006600"></font></font></b></font></pre>
+<p align="left"><font face="Tahoma" size="-1">When the richedit dll is loaded, 
+  it registers the RichEdit window class. Thus it's imperative that you load the 
+  DLL before you create the control. The names of the richedit control classes 
+  are also different. Now you may have a question: how do I know which version 
+  of richedit control should I use? Using the latest version is not always appropriate 
+  if you don't require the extra features. So below is the table that shows the 
+  features provided by each version of richedit control.</font></p>
+<table cellpadding="3" align="center" border="1">
+  <tr bgcolor="#CCFFCC"> 
+    <th nowrap><font face="MS Sans Serif" size="-1">Feature</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Version 1.0</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Version 2.0</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Version 3.0</font></th>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">selection bar</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">unicode editing</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">character/paragraph formatting</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">search for text</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">forward</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">forward/backward</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">forward/backward</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">OLE embedding</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Drag and drop editing</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Undo/Redo</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">single-level</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">multi-level</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">multi-level</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">automatic URL recognition</font></td>
+    <td> 
+      <div align="center"></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Accelerator key support</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Windowless operation</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Line break</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">CRLF</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">CR only</font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">CR only (can emulate 
+        version 1.0)</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Zoom</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">Paragraph numbering</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">simple table</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">normal and heading styles</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">underline coloring</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">hidden text</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><font face="MS Sans Serif" size="-1">font binding</font></td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1"></font></div>
+    </td>
+    <td> 
+      <div align="center"><font face="MS Sans Serif" size="-1">x</font></div>
+    </td>
+  </tr>
+</table>
+<p align="left"><font face="Tahoma" size="-1">The above table is by no means comprehensive: 
+  I only list the important features.</font></p>
+<h3 align="left"><font face="Times New Roman, Times, serif" color="#3333CC">Creating 
+  the richedit control</font><font face="Tahoma"> </font></h3>
+<p align="left"><font face="MS Sans Serif" size="-1">After loading the richedit 
+  dll, you can call <font color="#666600"><b>CreateWindowEx</b></font> to create 
+  the control. You can use edit control styles and common window styles in <font color="#006600"><b>CreateWindowEx</b></font> 
+  except <font color="#000066"><b>ES_LOWERCASE, ES_UPPERCASE and ES_OEMCONVERT</b></font>.</font></p>
+<pre align="left"><font face="Tahoma"><b><font color="#660066">.const
+	RichEditID equ 300
+.data
+	</font></b></font><b><font color="#660066"><font face="Tahoma">RichEditDLL db &quot;RichEd20.dll&quot;,0<br>	RichEditClass db &quot;RichEdit20A&quot;,0
+	...
+.data?<br>	hRichEditDLL dd ?
+	hwndRichEdit dd ?
+.code</font></font><font face="Tahoma">
+	.....
+	invoke <font color="#336600">LoadLibrary</font>,addr RichEditDLL
+	mov hRichEditDLL,eax<br>	invoke <font color="#336600">CreateWindowEx</font>,0,addr RichEditClass,WS_VISIBLE or ES_MULTILINE or WS_CHILD or WS_VSCROLL or WS_HSCROLL, \
+										CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,hWnd,RichEditID,hInstance,0
+	mov hwndRichEdit,eax</font></b></pre>
+<h3 align="left"><font face="Times New Roman, Times, serif" color="#3333CC">Setting 
+  default text and background color</font></h3>
+<p align="left"><font face="Tahoma" size="-1"> You may have the problem with setting 
+  text color and the background color of the edit control. But this problem has 
+  been remedy in richedit control. To set the background color of the richedit 
+  control, you send <font color="#006666"><b>EM_SETBKGNDCOLOR</b></font> to the 
+  richedit control. This message has the following syntax.</font></p>
+<p align="left"><font face="Tahoma" size="-1"> <font color="#990033"><b>wParam</b></font> 
+  == color option. The value of 0 in this parameter specifies that Windows uses 
+  the color value in <font color="#990033"><b>lParam</b></font> as the background 
+  color. If this value is nonzero, Windows uses the Windows system background 
+  color. Since we send this message to change the background color, we must pass 
+  0 in wParam.<br>
+  <font color="#990033"><b>lParam</b></font> == specifies the <font color="#003366"><b>COLORREF</b></font> 
+  structure of the color you want to set if wParam is 0.</font></p>
+<p align="left"><font face="Tahoma" size="-1"> For example, if I want to set the 
+  background color to pure blue, I would issue this following line:</font></p>
+<pre align="left"><font face="Tahoma">		<font color="#330066"><b>invoke SendMessage,hwndRichEdit,EM_SETBKGNDCOLOR,0,0FF0000h</b></font></font><font face="Tahoma"></font></pre>
+<p align="left"><font face="Tahoma" size="-1">To set the text color, richedit 
+  control provides another new message, <font color="#660066"><b>EM_SETCHARFORMAT</b></font>, 
+  for the job. This message controls the text formatting of a range to characters 
+  in selection or all text in the control. This message has the following syntax:</font></p>
+<p align="left"><font face="Tahoma" size="-1"> <font color="#0000FF"><b>wParam</b></font> 
+  == formatting options: </font></p>
+<table cellpadding="3" align="center" border="1">
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SCF_ALL</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">The operation affects all text in 
+      the control.</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SCF_SELECTION</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">The operation affects only the text 
+      in selection</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SCF_WORD or SCF_SELECTION</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Affects the word in selection. If 
+      the selection is empy, ie, only the caret is in the word, the operation 
+      affects that word. <b>SCF_WORD</b> flag must be used with <b>SCF_SELECTION</b>.</font></td>
+  </tr>
+</table>
+<p align="left"><font face="Tahoma" size="-1"> <font color="#0000FF"><b>lParam</b></font> 
+  == pointer to a <font color="#990099"><b>CHARFORMAT</b></font> or <font color="#990099"><b>CHARFORMAT2</b></font> 
+  structure that specifies the text formatting to be applied. <font color="#990099"><b>CHARFORMAT2</b></font> 
+  is available for richedit 2.0 and above only. This doesn't mean that you must 
+  use <font color="#990099"><b>CHARFORMAT2</b></font> with RichEdit 2.0 or above. 
+  You can still use <font color="#990099"><b>CHARFORMAT</b></font> if the added 
+  features in <font color="#990099"><b>CHARFORMAT2</b></font> are not necessary 
+  for your need.</font></p>
+<blockquote> 
+  <blockquote>
+    <pre align="left"><font face="Tahoma"><b><font color="#006666">CHARFORMATA STRUCT 
+	cbSize DWORD ? 
+	dwMask DWORD ? 
+	dwEffects DWORD    ? 
+	yHeight DWORD ? 
+	yOffset DWORD ? 
+	crTextColor COLORREF ? 
+	bCharSet BYTE ? 
+	bPitchAndFamily    BYTE ? 
+	szFaceName BYTE LF_FACESIZE dup(?) 
+	_wPad2 WORD ? 
+CHARFORMATA ENDS </font></b></font></pre>
+  </blockquote>
+</blockquote>
+<table cellpadding="3" align="center" border="1">
+  <tr bgcolor="#CCFFCC"> 
+    <th nowrap><b><font face="MS Sans Serif" size="-1">Field Name</font></b></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Description</font></th>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">cbSize</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">The size of the structure. RichEdit 
+      control uses this field to determine the version of the structure whether 
+      it is <font color="#003366"><b>CHARFORMAT</b></font> or <font color="#000066"><b>CHARFORMAT2</b></font></font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">dwMask</font></b></td>
+    <td> 
+      <p><font face="MS Sans Serif" size="-1">Bit flags that determine which of 
+        the following members are valid.</font></p>
+      <table cellpadding="3" border="1" align="center">
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_BOLD</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>CFE_BOLD</b></font> 
+            value of the <font color="#000066"><b>dwEffects</b></font> member 
+            is valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_CHARSET</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>bCharSet</b></font> 
+            member is valid.</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_COLOR</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>crTextColor</b></font> 
+            member and the <font color="#000066"><b>CFE_AUTOCOLOR</b></font> value 
+            of the <font color="#000066"><b>dwEffects</b></font> member are valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_FACE</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>szFaceName</b></font> 
+            member is valid.</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_ITALIC</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>CFE_ITALIC</b></font> 
+            value of the <font color="#000066"><b>dwEffects</b></font> member 
+            is valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_OFFSET</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>yOffset 
+            </b></font>member is valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_PROTECTED</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The<font color="#000066"><b> 
+            CFE_PROTECTED</b></font> value of the <font color="#000066"><b>dwEffects</b></font> 
+            member is valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_SIZE</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>yHeight</b></font> 
+            member is valid</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_STRIKEOUT</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>CFE_STRIKEOUT</b></font> 
+            value of the <font color="#000066"><b>dwEffects</b></font> member 
+            is valid.</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFM_UNDERLINE</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">The <font color="#000066"><b>CFE_UNDERLINE</b></font> 
+            value of the <font color="#000066"><b>dwEffects</b></font> member 
+            is valid</font></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">dwEffects</font></b></td>
+    <td> 
+      <p><font face="MS Sans Serif" size="-1">The character effects. Can be the 
+        combination of the following values</font></p>
+      <table cellpadding="3" align="center" border="1">
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_AUTOCOLOR</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Use the system text color</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_BOLD</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Characters are bold</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_ITALIC</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Characters are italic</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_STRIKEOUT</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Characters are struck.</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_UNDERLINE</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Characters are underlined</font></td>
+        </tr>
+        <tr> 
+          <td><b><font face="MS Sans Serif" size="-1">CFE_PROTECTED</font></b></td>
+          <td><font face="MS Sans Serif" size="-1">Characters are protected; an 
+            attempt to modify them will cause an <font color="#000066"><b>EN_PROTECTED</b></font> 
+            notification message. </font></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">yHeight</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Character height, in twips (1/1440 
+      of an inch or 1/20 of a printer's point). </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">yOffset</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Character offset, in twips, from 
+      the baseline. If the value of this member is positive, the character is 
+      a superscript; if it is negative, the character is a subscript. </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">crTextColor </font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Text color. This member is ignored 
+      if the CFE_AUTOCOLOR character effect is specified. </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">bCharSet</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Character set value</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">bPitchAndFamily</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Font family and pitch. </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">szFaceName </font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Null-terminated character array specifying 
+      the font name</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="Tahoma" size="-1">_wPad2</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Padding</font></td>
+  </tr>
+</table>
+<p><font face="Tahoma" size="-1">From examination of the structure, you'll see 
+  that we can change the text effects (bold,italic, strikeout,underline), text 
+  color (<font color="#006666"><b>crTextColor</b></font>) and font face/size/character 
+  set. A notable flag is <font color="#666600"><b>CFE_RPOTECTED</b></font>. The 
+  text with this flag is marked as protected which means that when the user tries 
+  to modify it, <font color="#666600"><b>EN_PROTECTED</b></font> notification 
+  message will be sent to the parent window. And you can allow the change to happen 
+  or not.</font></p>
+<p><font face="Tahoma" size="-1"><b><font color="#006666">CHARFORMAT2</font></b> 
+  adds more text styles such as font weight, spacing,text background color, kerning, 
+  etc. If you don't need these extra features, simply use <font color="#006666"><b>CHARFORMAT</b></font>. 
+  </font></p>
+<p><font face="Tahoma" size="-1">To set text formatting, you have to think about 
+  the range of text you want to apply to. Richedit control introduces the notion 
+  of character text range. Richedit control gives each character a number starting 
+  from 0: the first characterin the control has Id of 0, the second character 
+  1 and so on. To specify a text range, you must give the richedit control two 
+  numbers: the IDs of the first and the last character of the range. To apply 
+  the text formatting with <font color="#000066"><b>EM_SETCHARFORMAT</b></font>, 
+  you have at most three choices: </font></p>
+<ol>
+  <li><font face="Tahoma" size="-1">Apply to all text in the control (<font color="#006666"><b>SCF_ALL</b></font>)</font></li>
+  <li><font face="Tahoma" size="-1">Apply to the text currently in selection (<font color="#006666"><b>SCF_SELECTION</b></font>)</font></li>
+  <li><font face="Tahoma" size="-1">Apply to the whole word currently in selection 
+    (<font color="#006666"><b>SCF_WORD</b></font> or <font color="#006666"><b>SCF_SELECTION</b></font>)</font></li>
+</ol>
+<p><font face="Tahoma" size="-1">The first and the second choices are straightforward. 
+  The last choice requires a little explanation. If the current selection only 
+  covers one or more of the characters in the word but not the whole word, specifying 
+  the flag <font color="#006666"><b>SCF_WORD</b></font>+<font color="#006666"><b>SCF_SELECTION</b></font> 
+  applies the text formatting to the whole word. Even if there is no current selection, 
+  ie, only the caret is positioned in the word, the third choice also applies 
+  the text formatting to the whole word.</font></p>
+<p><font face="Tahoma" size="-1">To use <font color="#006666"><b>EM_SETCHARFORMAT</b></font>, 
+  you need to fill several members of <font color="#006666"><b>CHARFORMAT</b></font> 
+  (or <font color="#006666"><b>CHARFORMAT2</b></font>) structure. For example, 
+  if we want to set the text color, we will fill the <font color="#006666"><b>CHARFORMAT</b></font> 
+  structure as follows:</font></p>
+<pre><font face="Tahoma"><b><font color="#000066">.data?
+	cf CHARFORMAT &lt;&gt;
+....
+.code
+	mov cf.cbSize,sizeof cf
+	mov cf.dwMask,CFM_COLOR
+	mov cf.crTextColor,0FF0000h
+	invoke SendMessage,hwndRichEdit,EM_SETCHARFORMAT,SCF_ALL,addr cf</font></b></font></pre>
+<p><font face="Tahoma" size="-1">The above code snippet sets the text color of 
+  the richedit control to pure blue. Note that if there is no text in the richedit 
+  control when <font color="#006666"><b>EM_SETCHARFORMAT</b></font> is issued, 
+  the text entered into the richedit control following the message will use the 
+  text formatting specified by the<font color="#006666"><b> EM_SETCHARFORMAT</b></font> 
+  message.<br>
+  </font></p>
+<h3><font face="Times New Roman, Times, serif" color="#000099">Setting the text/saving 
+  the text</font></h3>
+<p><font face="Tahoma" size="-1">For those of you who are used to edit control, 
+  you'll surely be familiar with <font color="#006666"><b>WM_GETTEXT</b></font>/<font color="#006666"><b>WM_SETTEXT</b></font> 
+  as the means to set the text/get the text to/from the control. This method still 
+  works with richedit control but may not be efficient if the file is large. Edit 
+  control limits the text that can be entered into it to 64K but richedit control 
+  can accept text much larger than that. It would be very cumbersome to allocate 
+  a very large block of memory (such as 10 MB or so) to receive the text from 
+  <font color="#006666"><b>WM_GETTEXT</b></font>. Richedit control offers a new 
+  approach to this method, ie. text streaming.</font></p>
+<p><font face="Tahoma" size="-1">To put it simply, you provide the address of 
+  a callback function to the richedit control. And richedit control will call 
+  that callback, passing the address of the buffer to it, when it's ready. The 
+  callback will fill the buffer with the data it wants to send to the control 
+  or read the data from the buffer and then waits for the next call until the 
+  operation is finished. This paradigm is used for both streaming in (setting 
+  the text) and streaming out (getting the text out of the control). You'll see 
+  that this method is more efficient: the buffer is provided by the richedit control 
+  itself so the data are divided into chunks. The operations involve two messages:<font color="#006666"><b> 
+  EM_STREAMIN</b></font> and <font color="#006666"><b>EM_STREAMOUT</b></font></font></p>
+<p><font face="Tahoma" size="-1">Both <font color="#006666"><b>EM_STREAMIN </b></font>and 
+  <font color="#006666"> <b>EM_STREAMOUT</b></font> use the same syntax:</font></p>
+<p><font face="Tahoma" size="-1"> <font color="#0000FF"><b>wParam</b></font> == 
+  formatting options.</font></p>
+<table cellpadding="3" align="center" border="1">
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SF_RTF</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">The data is in the rich-text format 
+      (RTF) </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SF_TEXT</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">The data is in the plain text format</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SFF_PLAINRTF</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Only the keywords common to all languages 
+      are streamed in.</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SFF_SELECTION</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">If specified, the target of the operation 
+      is the text currently in selection. If you stream the text in, the text 
+      replaces the current selection. If you stream the text out, only the text 
+      currently in selection is streamed out. If this flag is not specified, the 
+      operation affects the whole text in the control.</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">SF_UNICODE</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">(Available on RichEdit 2.0 or later) 
+      Specify the unicode text.</font></td>
+  </tr>
+</table>
+<p><font face="Tahoma" size="-1"> <font color="#0000FF"><b>lParam</b></font> == 
+  point to an <font color="#006666"><b>EDITSTREAM</b></font> structure which has 
+  the following definition:</font><font face="Tahoma" size="-1"></font></p>
+<pre><font face="Tahoma"> <font color="#006666"><b>EDITSTREAM STRUCT 
+	dwCookie DWORD    ? 
+	dwError DWORD ? 
+	pfnCallback DWORD ? 
+EDITSTREAM ENDS</b></font></font><font face="Tahoma" size="-1"></font></pre>
+<table cellpadding="3" align="center" border="1">
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">dwCookie</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">application-defined value that will 
+      be passed to the callback function speficied in <font color="#000066"><b>pfnCallback</b></font> 
+      member below. We normally pass some important value to the callback function 
+      such as the file handle to use in the stream-in/out procedure.</font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">dwError</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Indicates the results of the stream-in 
+      (read) or stream-out (write) operation. A value of zero indicates no error. 
+      A nonzero value can be the return value of the EditStreamCallback function 
+      or a code indicating that the control encountered an error. </font></td>
+  </tr>
+  <tr bgcolor="#FFFFCC"> 
+    <td><b><font face="MS Sans Serif" size="-1">pfnCallback</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Pointer to an EditStreamCallback 
+      function, which is an application-defined function that the control calls 
+      to transfer data. The control calls the callback function repeatedly, transferring 
+      a portion of the data with each call</font></td>
+  </tr>
+</table>
+<p><font face="Tahoma" size="-1">The editstream callback function has the following 
+  definition:</font></p>
+<pre><font face="Tahoma">	<b><font color="#990099">EditStreamCallback</font> proto <font color="#CC00CC">dwCookie</font>:DWORD,<br>				 <font color="#CC00CC">pBuffer</font>:DWORD,
+				 <font color="#CC00CC">NumBytes</font>:DWORD,
+				 <font color="#CC00CC">pBytesTransferred</font>:DWORD</b></font></pre>
+<p><font face="Tahoma" size="-1">You have to create a function with the above 
+  prototype in your program. And then pass its address to <font color="#006666"><b>EM_STREAMIN</b></font> 
+  or <font color="#006666"><b>EM_STREAMOUT</b></font> via <font color="#006666"><b>EDITSTREAM</b></font> 
+  structure.</font></p>
+<p><font face="Tahoma" size="-1">For stream-in operation (settting the text in 
+  the richedit control)</font><font face="Tahoma">:</font></p>
+<pre><font face="Tahoma">	<font color="#660066"><b><font color="#990099">dwCookie</font></b></font>: the application-defined value you pass to <font color="#006666"><b>EM_STREAMIN</b></font> via <font color="#006666"><b>EDITSTREAM</b></font> structure. We almost always 
+		pass the file handle of the file we want to set its content to the control here.</font><font face="Tahoma">
+	<font color="#990099"><b>pBuffer</b></font>: points to the buffer provided by the richedit control that will receive the text from your callback function.
+	<font color="#990099"><b>NumBytes</b></font>: the maximum number of bytes you can write the the buffer (pBuffer) in this call. You <font color="#000099"><b>MUST</b></font> always obey this limit, ie, you can send
+		less data than the value in NumBytes but must not send more data than this value. You can think of this value as the size
+		of the buffer in pBuffer.
+   <b><font color="#990099">pBytesTransferred</font></b>: points to a dword that you must set the value indicating the number of bytes you actually transferred to the buffer.
+		This value is usually identical to the value in <font color="#990099"><b>NumBytes</b></font>. The exception is when the data is to send is less than
+		the size of the buffer provided such as when the end of file is reached.</font></pre>
+<p><font face="Tahoma"><font size="-1"> For stream-out operation (getting the 
+  text out of the richedit control):</font></font><font face="Tahoma"><font size="-1"></font></font><font face="Tahoma"><font size="-1"></font></font></p>
+<pre><font face="Tahoma">	<font color="#FFFFFF"><b><font color="#990099">dwCookie</font></b></font>: Same as the stream-in operation. We usually pass the file handle we want to write the data to in this parameter. 
+	<font color="#990099"><b>pBuffer</b></font>: points to the buffer provided by the richedit control that is filled with the data from the richedit control. 
+		To obtain its size, you must examine the value of <font color="#990099"><b>NumBytes</b></font>. <font color="#990099"><b>
+	NumBytes</b></font>: the size of the data in the buffer pointed to by pBuffer. 
+	<font color="#990099"><b>pBytesTransferred</b></font>: points to a dword that you must set the value indicating the number of bytes you actually read from the buffer.</font><font face="Tahoma"><font size="-1"></font></font></pre>
+<p><font face="Tahoma" size="-1">The callback function returns 0 to indicate success 
+  and richedit control will continue calling the callback function if there is 
+  still data left to read/write. If some error occurs during the process and you 
+  want to stop the operation, returns a non-zero value and the richedit control 
+  will discard the data pointed to by pBuffer. The error/success value will be 
+  filled in the <font color="#006666"><b>dwError</b></font> field of <font color="#990000"><b>EDITSTREAM</b></font> 
+  so you can examine the error/success status of the stream operation after <font color="#006666"><b>SendMessage</b></font> 
+  returns. </font><font face="Tahoma"><font size="-1"></font></font></p>
+<h3><font face="Times New Roman, Times, serif" color="#0000CC">Example:</font></h3>
+<p><font face="Tahoma" size="-1">The example below is a simple editor which you 
+  can open an asm source code file, edit and save it. It uses RichEdit control 
+  version 2.0 or above.</font></p>
+<pre align="left"><b><font face="Tahoma">.386
+.model flat,stdcall
+option casemap:none
+include \masm32\include\windows.inc
+include \masm32\include\user32.inc
+include \masm32\include\comdlg32.inc
+include \masm32\include\gdi32.inc
+include \masm32\include\kernel32.inc
+includelib \masm32\lib\gdi32.lib
+includelib \masm32\lib\comdlg32.lib
+includelib \masm32\lib\user32.lib
+includelib \masm32\lib\kernel32.lib
+
+WinMain proto :DWORD,:DWORD,:DWORD,:DWORD
+
+.const
+IDR_MAINMENU                   equ 101
+IDM_OPEN                      equ  40001
+IDM_SAVE                       equ 40002
+IDM_CLOSE                      equ 40003
+IDM_SAVEAS                     equ 40004
+IDM_EXIT                       equ 40005
+IDM_COPY                      equ  40006
+IDM_CUT                       equ  40007
+IDM_PASTE                      equ 40008
+IDM_DELETE                     equ 40009
+IDM_SELECTALL                  equ 40010
+IDM_OPTION 			equ 40011
+IDM_UNDO			equ 40012
+IDM_REDO			equ 40013
+IDD_OPTIONDLG                  equ 101
+IDC_BACKCOLORBOX               equ 1000
+IDC_TEXTCOLORBOX               equ 1001
+
+RichEditID 			equ 300
+
+.data
+ClassName db "<font color="#0000FF">IczEditClass</font>",0
+AppName  db "<font color="#0000FF">IczEdit version 1.0</font>",0
+RichEditDLL db "<font color="#0000FF">riched20.dll</font>",0
+RichEditClass db "<font color="#0000FF">RichEdit20A</font>",0
+NoRichEdit db "<font color="#0000FF">Cannot find riched20.dll</font>",0
+ASMFilterString 		db "<font color="#0000FF">ASM Source code (*.asm)</font>",0,"*<font color="#0000FF">.asm</font>",0
+				db "<font color="#0000FF">All Files (*.*)</font>",0,"<font color="#0000FF">*.*</font>",0,0
+OpenFileFail db "<font color="#0000FF">Cannot open the file</font>",0
+WannaSave db "<font color="#0000FF">The data in the control is modified. Want to save it?</font>",0
+FileOpened dd FALSE
+BackgroundColor dd 0FFFFFFh		<font color="#006666">; default to white</font>
+TextColor dd 0		<font color="#006666">; default to black</font>
+
+.data?
+hInstance dd ?
+hRichEdit dd ?
+hwndRichEdit dd ?
+FileName db 256 dup(?)
+AlternateFileName db 256 dup(?)
+CustomColors dd 16 dup(?)
+
+.code
+start:
+	invoke GetModuleHandle, NULL
+	mov    hInstance,eax
+<font color="#FF0033">	invoke LoadLibrary,addr RichEditDLL</font>
+	.if eax!=0
+		mov hRichEdit,eax
+		invoke WinMain, hInstance,0,0, SW_SHOWDEFAULT
+		invoke FreeLibrary,hRichEdit
+	.else
+		invoke MessageBox,0,addr NoRichEdit,addr AppName,MB_OK or MB_ICONERROR
+	.endif
+	invoke ExitProcess,eax
+	
+WinMain proc hInst:DWORD,hPrevInst:DWORD,CmdLine:DWORD,CmdShow:DWORD
+	LOCAL wc:WNDCLASSEX
+	LOCAL msg:MSG
+	LOCAL hwnd:DWORD
+	mov   wc.cbSize,SIZEOF WNDCLASSEX
+	mov   wc.style, CS_HREDRAW or CS_VREDRAW
+	mov   wc.lpfnWndProc, OFFSET WndProc
+	mov   wc.cbClsExtra,NULL
+	mov   wc.cbWndExtra,NULL
+	push  hInst
+	pop   wc.hInstance
+	mov   wc.hbrBackground,COLOR_WINDOW+1
+	mov   wc.lpszMenuName,IDR_MAINMENU
+	mov   wc.lpszClassName,OFFSET ClassName
+	invoke LoadIcon,NULL,IDI_APPLICATION
+	mov   wc.hIcon,eax
+	mov   wc.hIconSm,eax
+	invoke LoadCursor,NULL,IDC_ARROW
+	mov   wc.hCursor,eax
+	invoke RegisterClassEx, addr wc
+	INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\
+           WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\
+           CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\
+           hInst,NULL
+	mov   hwnd,eax
+	invoke ShowWindow, hwnd,SW_SHOWNORMAL
+	invoke UpdateWindow, hwnd
+	.while TRUE
+		invoke GetMessage, ADDR msg,0,0,0
+		.break .if (!eax)
+		invoke TranslateMessage, ADDR msg
+		invoke DispatchMessage, ADDR msg
+	.endw
+	mov   eax,msg.wParam
+	ret
+WinMain endp
+
+<font color="#003399">StreamInProc</font> proc hFile:DWORD,pBuffer:DWORD, NumBytes:DWORD, pBytesRead:DWORD
+	invoke ReadFile,hFile,pBuffer,NumBytes,pBytesRead,0
+	xor eax,1
+	ret
+<font color="#003399">StreamInProc</font> endp
+
+<font color="#003399">StreamOutProc</font> proc hFile:DWORD,pBuffer:DWORD, NumBytes:DWORD, pBytesWritten:DWORD
+	invoke WriteFile,hFile,pBuffer,NumBytes,pBytesWritten,0
+	xor eax,1
+	ret
+<font color="#003399">StreamOutProc</font> endp
+
+<font color="#003399">CheckModifyState</font> proc hWnd:DWORD
+	invoke SendMessage,hwndRichEdit,EM_GETMODIFY,0,0
+	.if eax!=0
+		invoke MessageBox,hWnd,addr WannaSave,addr AppName,MB_YESNOCANCEL
+		.if eax==IDYES
+			invoke SendMessage,hWnd,WM_COMMAND,IDM_SAVE,0
+		.elseif eax==IDCANCEL
+			mov eax,FALSE
+			ret
+		.endif
+	.endif
+	mov eax,TRUE
+	ret
+<font color="#003399">CheckModifyState</font> endp
+
+<font color="#003399">SetColor</font> proc
+	LOCAL cfm:CHARFORMAT
+	invoke SendMessage,hwndRichEdit,EM_SETBKGNDCOLOR,0,BackgroundColor
+	invoke RtlZeroMemory,addr cfm,sizeof cfm
+	mov cfm.cbSize,sizeof cfm
+	mov cfm.dwMask,CFM_COLOR
+	push TextColor
+	pop cfm.crTextColor
+	invoke SendMessage,hwndRichEdit,EM_SETCHARFORMAT,SCF_ALL,addr cfm
+	ret
+<font color="#003399">SetColor</font> endp
+
+<font color="#003399">OptionProc</font> proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL clr:CHOOSECOLOR
+	.if uMsg==WM_INITDIALOG
+	.elseif uMsg==WM_COMMAND
+		mov eax,wParam
+		shr eax,16
+		.if ax==BN_CLICKED
+			mov eax,wParam
+			.if ax==IDCANCEL
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.elseif ax==IDC_BACKCOLORBOX
+				invoke RtlZeroMemory,addr clr,sizeof clr
+				mov clr.lStructSize,sizeof clr
+				push hWnd
+				pop clr.hwndOwner
+				push hInstance
+				pop clr.hInstance
+				push BackgroundColor
+				pop clr.rgbResult
+				mov clr.lpCustColors,offset CustomColors
+				mov clr.Flags,CC_ANYCOLOR or CC_RGBINIT
+				invoke ChooseColor,addr clr
+				.if eax!=0
+					push clr.rgbResult
+					pop BackgroundColor
+					invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+					invoke InvalidateRect,eax,0,TRUE
+				.endif
+			.elseif ax==IDC_TEXTCOLORBOX
+				invoke RtlZeroMemory,addr clr,sizeof clr
+				mov clr.lStructSize,sizeof clr
+				push hWnd
+				pop clr.hwndOwner
+				push hInstance
+				pop clr.hInstance
+				push TextColor
+				pop clr.rgbResult
+				mov clr.lpCustColors,offset CustomColors
+				mov clr.Flags,CC_ANYCOLOR or CC_RGBINIT
+				invoke ChooseColor,addr clr
+				.if eax!=0
+					push clr.rgbResult
+					pop TextColor
+					invoke GetDlgItem,hWnd,IDC_TEXTCOLORBOX
+					invoke InvalidateRect,eax,0,TRUE
+				.endif
+			.elseif ax==IDOK
+				;==================================================================================
+				; Save the modify state of the richedit control because changing the text color changes the
+				; modify state of the richedit control.
+				;==================================================================================
+				invoke SendMessage,hwndRichEdit,EM_GETMODIFY,0,0
+				push eax
+				invoke SetColor
+				pop eax
+				invoke SendMessage,hwndRichEdit,EM_SETMODIFY,eax,0
+				invoke EndDialog,hWnd,0
+			.endif
+		.endif
+	.elseif uMsg==WM_CTLCOLORSTATIC
+		invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+		.if eax==lParam
+			invoke CreateSolidBrush,BackgroundColor			
+			ret
+		.else
+			invoke GetDlgItem,hWnd,IDC_TEXTCOLORBOX
+			.if eax==lParam
+				invoke CreateSolidBrush,TextColor
+				ret
+			.endif
+		.endif
+		mov eax,FALSE
+		ret
+	.elseif uMsg==WM_CLOSE
+		invoke EndDialog,hWnd,0
+	.else
+		mov eax,FALSE
+		ret
+	.endif
+	mov eax,TRUE
+	ret
+OptionProc endp
+
+WndProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL chrg:CHARRANGE
+	LOCAL ofn:OPENFILENAME
+	LOCAL buffer[256]:BYTE
+	LOCAL editstream:EDITSTREAM
+	LOCAL hFile:DWORD
+	.if uMsg==WM_CREATE
+		invoke CreateWindowEx,WS_EX_CLIENTEDGE,addr RichEditClass,0,WS_CHILD or WS_VISIBLE or ES_MULTILINE or WS_VSCROLL or WS_HSCROLL or ES_NOHIDESEL,\
+				CW_USEDEFAULT,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,hWnd,RichEditID,hInstance,0
+		mov hwndRichEdit,eax
+		;=============================================================
+		; Set the text limit. The default is 64K
+		;=============================================================
+		invoke SendMessage,hwndRichEdit,EM_LIMITTEXT,-1,0
+		;=============================================================
+		; Set the default text/background color
+		;=============================================================
+		invoke SetColor
+		invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+		invoke SendMessage,hwndRichEdit,EM_EMPTYUNDOBUFFER,0,0
+	.elseif uMsg==WM_INITMENUPOPUP
+		mov eax,lParam
+		.if ax==0		; file menu			
+			.if FileOpened==TRUE	; a file is already opened
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_ENABLED
+			.else
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_GRAYED
+			.endif
+		.elseif ax==1	; edit menu
+			;=============================================================================
+			; Check whether there is some text in the clipboard. If so, we enable the paste menuitem
+			;=============================================================================
+			invoke SendMessage,hwndRichEdit,EM_CANPASTE,CF_TEXT,0
+			.if eax==0		; no text in the clipboard
+				invoke EnableMenuItem,wParam,IDM_PASTE,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_PASTE,MF_ENABLED
+			.endif
+			;==========================================================
+			; check whether the undo queue is empty
+			;==========================================================
+			invoke SendMessage,hwndRichEdit,EM_CANUNDO,0,0
+			.if eax==0
+				invoke EnableMenuItem,wParam,IDM_UNDO,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_UNDO,MF_ENABLED
+			.endif
+			;=========================================================
+			; check whether the redo queue is empty
+			;=========================================================
+			invoke SendMessage,hwndRichEdit,EM_CANREDO,0,0
+			.if eax==0
+				invoke EnableMenuItem,wParam,IDM_REDO,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_REDO,MF_ENABLED
+			.endif
+			;=========================================================
+			; check whether there is a current selection in the richedit control.
+			; If there is, we enable the cut/copy/delete menuitem
+			;=========================================================
+			invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr chrg
+			mov eax,chrg.cpMin
+			.if eax==chrg.cpMax		; no current selection
+				invoke EnableMenuItem,wParam,IDM_COPY,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_CUT,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_DELETE,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_COPY,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_CUT,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_DELETE,MF_ENABLED
+			.endif
+		.endif
+	.elseif uMsg==WM_COMMAND
+		.if lParam==0		; menu commands
+			mov eax,wParam
+			.if ax==IDM_OPEN
+				invoke RtlZeroMemory,addr ofn,sizeof ofn
+				mov ofn.lStructSize,sizeof ofn
+				push hWnd
+				pop ofn.hwndOwner
+				push hInstance
+				pop ofn.hInstance
+				mov ofn.lpstrFilter,offset ASMFilterString
+				mov ofn.lpstrFile,offset FileName
+				mov byte ptr [FileName],0
+				mov ofn.nMaxFile,sizeof FileName
+				mov ofn.Flags,OFN_FILEMUSTEXIST or OFN_HIDEREADONLY or OFN_PATHMUSTEXIST
+				invoke GetOpenFileName,addr ofn
+				.if eax!=0
+					invoke CreateFile,addr FileName,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0
+					.if eax!=INVALID_HANDLE_VALUE
+						mov hFile,eax
+						;================================================================
+						; stream the text into the richedit control
+						;================================================================						
+						mov editstream.dwCookie,eax
+						mov editstream.pfnCallback,offset StreamInProc
+						invoke SendMessage,hwndRichEdit,EM_STREAMIN,SF_TEXT,addr editstream
+						;==========================================================
+						; Initialize the modify state to false
+						;==========================================================
+						invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+						invoke CloseHandle,hFile
+						mov FileOpened,TRUE
+					.else
+						invoke MessageBox,hWnd,addr OpenFileFail,addr AppName,MB_OK or MB_ICONERROR
+					.endif
+				.endif
+			.elseif ax==IDM_CLOSE
+				invoke CheckModifyState,hWnd
+				.if eax==TRUE
+					invoke SetWindowText,hwndRichEdit,0
+					mov FileOpened,FALSE
+				.endif
+			.elseif ax==IDM_SAVE
+				invoke CreateFile,addr FileName,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+				.if eax!=INVALID_HANDLE_VALUE
+@@:				
+					mov hFile,eax
+					;================================================================
+					; stream the text to the file
+					;================================================================						
+					mov editstream.dwCookie,eax
+					mov editstream.pfnCallback,offset StreamOutProc
+					invoke SendMessage,hwndRichEdit,EM_STREAMOUT,SF_TEXT,addr editstream
+					;==========================================================
+					; Initialize the modify state to false
+					;==========================================================
+					invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+					invoke CloseHandle,hFile
+				.else
+					invoke MessageBox,hWnd,addr OpenFileFail,addr AppName,MB_OK or MB_ICONERROR
+				.endif
+			.elseif ax==IDM_COPY
+				invoke SendMessage,hwndRichEdit,WM_COPY,0,0
+			.elseif ax==IDM_CUT
+				invoke SendMessage,hwndRichEdit,WM_CUT,0,0
+			.elseif ax==IDM_PASTE
+				invoke SendMessage,hwndRichEdit,WM_PASTE,0,0
+			.elseif ax==IDM_DELETE
+				invoke SendMessage,hwndRichEdit,EM_REPLACESEL,TRUE,0
+			.elseif ax==IDM_SELECTALL
+				mov chrg.cpMin,0
+				mov chrg.cpMax,-1
+				invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr chrg
+			.elseif ax==IDM_UNDO
+				invoke SendMessage,hwndRichEdit,EM_UNDO,0,0
+			.elseif ax==IDM_REDO
+				invoke SendMessage,hwndRichEdit,EM_REDO,0,0
+			.elseif ax==IDM_OPTION
+				invoke DialogBoxParam,hInstance,IDD_OPTIONDLG,hWnd,addr OptionProc,0
+			.elseif ax==IDM_SAVEAS
+				invoke RtlZeroMemory,addr ofn,sizeof ofn
+				mov ofn.lStructSize,sizeof ofn
+				push hWnd
+				pop ofn.hwndOwner
+				push hInstance
+				pop ofn.hInstance
+				mov ofn.lpstrFilter,offset ASMFilterString
+				mov ofn.lpstrFile,offset AlternateFileName
+				mov byte ptr [AlternateFileName],0
+				mov ofn.nMaxFile,sizeof AlternateFileName
+				mov ofn.Flags,OFN_FILEMUSTEXIST or OFN_HIDEREADONLY or OFN_PATHMUSTEXIST
+				invoke GetSaveFileName,addr ofn
+				.if eax!=0
+					invoke CreateFile,addr AlternateFileName,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+					.if eax!=INVALID_HANDLE_VALUE
+						jmp @B
+					.endif
+				.endif
+			.elseif ax==IDM_EXIT
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.endif
+		.endif
+	.elseif uMsg==WM_CLOSE
+		invoke CheckModifyState,hWnd
+		.if eax==TRUE
+			invoke DestroyWindow,hWnd
+		.endif
+	.elseif uMsg==WM_SIZE
+		mov eax,lParam
+		mov edx,eax
+		and eax,0FFFFh
+		shr edx,16
+		invoke MoveWindow,hwndRichEdit,0,0,eax,edx,TRUE		
+	.elseif uMsg==WM_DESTROY
+		invoke PostQuitMessage,NULL
+	.else
+		invoke DefWindowProc,hWnd,uMsg,wParam,lParam		
+		ret
+	.endif
+	xor eax,eax
+	ret
+WndProc endp
+end start
+
+;===================================================================
+; The resource file
+;===================================================================
+#include "resource.h"
+#define IDR_MAINMENU                    101
+#define IDD_OPTIONDLG                   101
+#define IDC_BACKCOLORBOX                1000
+#define IDC_TEXTCOLORBOX                1001
+#define IDM_OPEN                        40001
+#define IDM_SAVE                        40002
+#define IDM_CLOSE                       40003
+#define IDM_SAVEAS                      40004
+#define IDM_EXIT                        40005
+#define IDM_COPY                        40006
+#define IDM_CUT                         40007
+#define IDM_PASTE                       40008
+#define IDM_DELETE                      40009
+#define IDM_SELECTALL                   40010
+#define IDM_OPTION                      40011
+#define IDM_UNDO                        40012
+#define IDM_REDO                        40013
+
+IDR_MAINMENU MENU DISCARDABLE 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Open",                       IDM_OPEN
+        MENUITEM "&Close",                      IDM_CLOSE
+        MENUITEM "&Save",                       IDM_SAVE
+        MENUITEM "Save &As",                    IDM_SAVEAS
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       IDM_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "&Undo",                       IDM_UNDO
+        MENUITEM "&Redo",                       IDM_REDO
+        MENUITEM "&Copy",                       IDM_COPY
+        MENUITEM "C&ut",                        IDM_CUT
+        MENUITEM "&Paste",                      IDM_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Delete",                     IDM_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "Select &All",                 IDM_SELECTALL
+    END
+    MENUITEM "Options",                     IDM_OPTION
+END
+
+
+IDD_OPTIONDLG DIALOG DISCARDABLE  0, 0, 183, 54
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | DS_CENTER
+CAPTION "Options"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,137,7,39,14
+    PUSHBUTTON      "Cancel",IDCANCEL,137,25,39,14
+    GROUPBOX        "",IDC_STATIC,5,0,124,49
+    LTEXT           "Background Color:",IDC_STATIC,20,14,60,8
+    LTEXT           "",IDC_BACKCOLORBOX,85,11,28,14,SS_NOTIFY | WS_BORDER
+    LTEXT           "Text Color:",IDC_STATIC,20,33,35,8
+    LTEXT           "",IDC_TEXTCOLORBOX,85,29,28,14,SS_NOTIFY | WS_BORDER
+END</font></b></pre>
+<hr noshade>
+<h3 align="left"><font face="Times New Roman, Times, serif" color="#0000CC">Analysis:</font></h3>
+<p align="left"><font face="Tahoma" size="-1">The program first loads the richedit 
+  dll, which in this case is riched20.dll. If the dll cannot be loaded, it exits 
+  to Windows.</font><br>
+</p>
+<pre align="left"><b><font face="Tahoma"><font color="#FF0033">invoke LoadLibrary,addr RichEditDLL</font> 
+.if eax!=0 
+	mov hRichEdit,eax 
+	invoke WinMain,hInstance,0,0, SW_SHOWDEFAULT 
+	invoke FreeLibrary,hRichEdit 
+.else 
+	invoke MessageBox,0,addr NoRichEdit,addr AppName,MB_OK or MB_ICONERROR 
+.endif 
+invoke ExitProcess,eax</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">After the dll is loaded successfully, 
+  we proceed to create a normal window which will be the parent of the richedit 
+  control. Within the <font color="#006666"><b>WM_CREATE</b></font> handler, we 
+  create the richedit control:</font></p>
+<pre align="left"><b><font face="Tahoma">		invoke CreateWindowEx,WS_EX_CLIENTEDGE,addr RichEditClass,0,WS_CHILD or WS_VISIBLE or ES_MULTILINE or WS_VSCROLL or WS_HSCROLL or ES_NOHIDESEL,\
+				CW_USEDEFAULT,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,hWnd,RichEditID,hInstance,0
+		mov hwndRichEdit,eax</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">Note that we specify<font color="#006666"><b> 
+  ES_MULTILINE</b></font> style else the control will be a single-lined one.</font><b><font face="Tahoma" size="-1"> 
+  <br>
+  </font></b></p>
+<pre align="left"><b><font face="Tahoma">		invoke SendMessage,hwndRichEdit,EM_LIMITTEXT,-1,0</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">After the richedit control is created, 
+  we must set the new text limit on it. By default, the richedit control has 64K 
+  text limit, the same as a simple multi-line edit control. We must extend this 
+  limit to allow it to operate with larger files. In the above line, I specify 
+  -1 which amounts to 0FFFFFFFFh, a very large value.</font></p>
+<pre align="left"><font face="Tahoma">     </font><b><font face="Tahoma"> </font></b><b><font face="Tahoma"> invoke SetColor</font></b></pre>
+<p align="left"><b><font face="Tahoma"><br>
+  </font></b><font face="Tahoma" size="-1">Next, we set the text/background </font><font face="Tahoma" size="-1">color. 
+  Since this operation can be performed in other part of the program, I put the 
+  code in a function named SetColor.</font><b><font face="Tahoma" size="-1"> <br>
+  </font></b></p>
+<pre align="left"><b><font face="Tahoma"><font color="#003399">SetColor</font> proc
+	LOCAL cfm:CHARFORMAT
+	invoke SendMessage,hwndRichEdit,EM_SETBKGNDCOLOR,0,BackgroundColor</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">Setting the background color of 
+  the richedit control is a straightforward operation: just send <font color="#006666"><b>EM_SETBKGNDCOLOR</b></font> 
+  message to the richedit control. (If you use a multi-line edit control, you 
+  have to process <font color="#006666"><b>WM_CTLCOLOREDIT</b></font>). The default 
+  background color is white. </font><b><font face="Tahoma" size="-1"> <br>
+  </font></b></p>
+<pre align="left"><b><font face="Tahoma">	invoke RtlZeroMemory,addr cfm,sizeof cfm
+	mov cfm.cbSize,sizeof cfm
+	mov cfm.dwMask,CFM_COLOR
+	push TextColor
+	pop cfm.crTextColor</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">After the background color is set, 
+  we fill in the members of <font color="#006666"><b>CHARFORMAT</b></font> in 
+  order to set the text color. Note that we fill <font color="#006666"><b>cbSize</b></font> 
+  with the size of the structure so the richedit control knows we are sending 
+  it <font color="#006666"><b>CHARFORMAT</b></font>, not <font color="#006666"><b>CHARFORMAT2</b></font>. 
+  <font color="#006666"> <b>dwMask</b></font> has only one flag, <font color="#0000CC"><b>CFM_COLOR</b></font>, 
+  because we only want to set the text color and <font color="#006666"><b>crTextColor</b></font> 
+  is filled with the value of the desired text color. </font></p>
+<pre align="left"><b><font face="Tahoma">	invoke SendMessage,hwndRichEdit,EM_SETCHARFORMAT,SCF_ALL,addr cfm
+	ret
+<font color="#003399">SetColor</font> endp</font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">After settting the color, you have 
+  to empty undo buffer simply because the act of changing text/background color 
+  is undo-able. We send <font color="#006666"><b>EM_EMPTYUNDOBUFFER</b></font> 
+  message to achieve this.</font></p>
+<pre align="left"><font face="Tahoma" size="-1"><b>	invoke SendMessage,hwndRichEdit,EM_EMPTYUNDOBUFFER,0,0</b></font><b><font face="Tahoma"> </font></b></pre>
+<p align="left"><font face="Tahoma" size="-1">After filling the <font color="#006666"><b>CHARFORMAT</b></font> 
+  structure, we send <font color="#006666"><b>EM_SETCHARFORMAT</b></font> to the 
+  richedit control, specifying <font color="#0000CC"><b>SCF_ALL</b></font> flag 
+  in <font color="#CC0033"><b>wParam</b></font> to indicate that we want the text 
+  formatting to be applied to all text in the control.</font><b><font face="Tahoma" size="-1"> 
+  </font></b></p>
+<p><font face="Tahoma" size="-1">Note that when we first created the richedit 
+  control, we didn't specify its size/position at that time. That's because we 
+  want it to cover the whole client area of the parent window. We resize it whenever 
+  the size of the parent window changes.</font></p>
+<pre><b><font face="Tahoma">	.elseif uMsg==WM_SIZE
+		mov eax,lParam
+		mov edx,eax
+		and eax,0FFFFh
+		shr edx,16
+		invoke MoveWindow,hwndRichEdit,0,0,eax,edx,TRUE</font></b></pre>
+<p><font face="Tahoma" size="-1">In the above code snippet, we use the new dimension 
+  of the client area passed in <font color="#0000CC"><b>lParam</b></font> to resize 
+  the richedit control with <font color="#009999"><b><font color="#006666">MoveWindow</font></b></font>.</font></p>
+<p><font face="Tahoma" size="-1">When the user clicks on the File/Edit menu bar, 
+  we process <font color="#006666"><b>WM_INITPOPUPMENU</b></font> so that we can 
+  prepare the states of the menuitems in the submenu before displaying it to the 
+  user. For example, if a file is already opened in the richedit control, we want 
+  to disable the open menuitem and enable all the remaining menuitems.</font></p>
+<p><font face="Tahoma" size="-1">In the case of the File menu bar, we use the 
+  variable <font color="#0000CC"><b>FileOpened</b></font> as the flag to determine 
+  whether a file is already opened. If the value in this variable is TRUE, we 
+  know that a file is already opened.</font></p>
+<pre><b><font face="Tahoma">	.elseif uMsg==WM_INITMENUPOPUP
+		mov eax,lParam
+		.if ax==0		; file menu			
+			.if FileOpened==TRUE	; a file is already opened
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_ENABLED
+			.else
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_GRAYED
+			.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">As you can see, if a file is already opened, 
+  we gray out the open menuitem and enable the remaining menuitems. The reverse 
+  is true of <font color="#0000CC"><b>FileOpened</b></font> is false.</font></p>
+<p><font face="Tahoma" size="-1">In the case of the edit menu bar, we need to 
+  check the state of the richedit control/clipboard first.</font></p>
+<pre><b><font face="Tahoma">			invoke SendMessage,hwndRichEdit,EM_CANPASTE,CF_TEXT,0
+			.if eax==0		; no text in the clipboard
+				invoke EnableMenuItem,wParam,IDM_PASTE,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_PASTE,MF_ENABLED
+			.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">We first check whether some text is available 
+  in the clipboard by sending <font color="#006666"><b>EM_CANPASTE</b></font> 
+  message. If some text is available, <font color="#0000CC"><b>SendMessage</b></font> 
+  returns TRUE and we enable the paste menuitem. If not, we gray out the menuitem. 
+  </font></p>
+<pre><b><font face="Tahoma">			invoke SendMessage,hwndRichEdit,EM_CANUNDO,0,0
+			.if eax==0
+				invoke EnableMenuItem,wParam,IDM_UNDO,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_UNDO,MF_ENABLED
+			.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">Next, we check whether the undo buffer is empty 
+  by sending <font color="#006666"><b>EM_CANUNDO</b></font> message. If it's not 
+  empty, <font color="#0000CC"><b>SendMessage</b></font> returns TRUE and we enable 
+  the undo menuitem. </font></p>
+<pre><b><font face="Tahoma">			invoke SendMessage,hwndRichEdit,EM_CANREDO,0,0
+			.if eax==0
+				invoke EnableMenuItem,wParam,IDM_REDO,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_REDO,MF_ENABLED
+			.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">We check the redo buffer by sending <font color="#006666"><b>EM_CANREDO</b></font> 
+  message to the richedit control. If it's not empty, <font color="#0000CC"><b>SendMessage</b></font> 
+  returns TRUE and we enable the redo menuitem. </font><b><font face="Tahoma" size="-1"> 
+  </font></b></p>
+<pre><b><font face="Tahoma">			invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr chrg
+			mov eax,chrg.cpMin
+			.if eax==chrg.cpMax		; no current selection
+				invoke EnableMenuItem,wParam,IDM_COPY,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_CUT,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_DELETE,MF_GRAYED
+			.else
+				invoke EnableMenuItem,wParam,IDM_COPY,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_CUT,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_DELETE,MF_ENABLED
+			.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">Lastly, we check whether a current selection 
+  exists by sending <font color="#006666"><b>EM_EXGETSEL</b></font> message. This 
+  message uses a <font color="#990099"><b>CHARRANGE</b></font> structure which 
+  is defined as follows:</font></p>
+<pre><font face="Tahoma"><b>CHARRANGE STRUCT
+  cpMin  DWORD      ?
+  cpMax  DWORD      ?
+CHARRANGE ENDS</b></font></pre>
+<p><font face="Tahoma" size="-1"><b><font color="#0000CC">cpMin</font></b> contains 
+  the character position index immediately preceding the first character in the 
+  range.<br>
+  <font color="#0000CC"><b>cpMax</b></font> contains the character position immediately 
+  following the last character in the range.</font></p>
+<p><font face="Tahoma" size="-1">After <font color="#006666"><b>EM_EXGETSEL</b></font> 
+  returns, the <font color="#990099"><b>CHARRANGE</b></font> structure is filled 
+  with the starting-ending character position indices of the selection range. 
+  If there is no current selection, <font color="#0000CC"><b>cpMin</b></font> 
+  and <font color="#0000CC"><b>cpMax</b></font> are identical and we gray out 
+  the cut/copy/delete menuitems.</font><font face="Tahoma" size="-1"><b></b></font></p>
+<p><font face="Tahoma" size="-1">When the user clicks the Open menuitem, we display 
+  an open file dialog box and if the user selects a file, we open the file and 
+  stream its content to the richedit control.</font></p>
+<pre><b><font face="Tahoma">					invoke CreateFile,addr FileName,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0
+					.if eax!=INVALID_HANDLE_VALUE
+						mov hFile,eax
+
+						mov editstream.dwCookie,eax
+						mov editstream.pfnCallback,offset StreamInProc
+						invoke SendMessage,hwndRichEdit,EM_STREAMIN,SF_TEXT,addr editstream</font></b></pre>
+<p><font face="Tahoma" size="-1">After the file is successfully opened with <font color="#666600"><b>CreateFile</b></font>, 
+  we fill the <font color="#CC0033"><b>EDITSTREAM</b></font> structure in preparation 
+  for <font color="#006666"><b>EM_STREAMIN</b></font> message. We choose to send 
+  the handle to the opened file via <font color="#006666"><b>dwCookie</b></font> 
+  member and pass the address of the stream callback function in <font color="#006666"><b>pfnCallback</b></font>.</font></p>
+<p><font face="Tahoma" size="-1">The stream callback procedure itself is the essence 
+  of simplicity.</font></p>
+<pre><font face="Tahoma"><b><font face="Tahoma"><font color="#003399">StreamInProc</font> proc hFile:DWORD,pBuffer:DWORD, NumBytes:DWORD, pBytesRead:DWORD
+	invoke ReadFile,hFile,pBuffer,NumBytes,pBytesRead,0
+	xor eax,1
+	ret
+<font color="#003399">StreamInProc</font> endp</font></b><b></b></font></pre>
+<p><font face="Tahoma" size="-1"><b><font face="Tahoma" size="-1"> </font></b>You 
+  can see that all parameters of the stream callback procedure </font><font face="Tahoma" size="-1"> 
+  fit perfectly with <font color="#006666"><b>ReadFile</b></font>. And the return 
+  value of <font color="#006666"><b>ReadFile</b></font> is xor-ed with 1 so that 
+  if it returns 1 (success), the actual value returned in eax is 0 and vice versa.</font><font face="Tahoma" size="-1"><b><font face="Tahoma" size="-1"></font></b></font><b><font face="Tahoma" size="-1"></font></b><b><font face="Tahoma" size="-1"></font></b></p>
+<pre><font face="Tahoma" size="-1"><b><font face="Tahoma" size="-1"></font></b></font><b><font face="Tahoma">	invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+	invoke CloseHandle,hFile
+	mov FileOpened,TRUE</font></b><b><font face="Tahoma"></font></b></pre>
+<p><font face="Tahoma" size="-1">After <font color="#006666"><b>EM_STREAMIN</b></font> 
+  returns, it means the stream operation is completed. In reality, we must check 
+  the value of <font color="#0000CC"><b>dwError</b></font> member of the <font color="#006666"><b>EDITSTREAM</b></font> 
+  structure.</font></p>
+<p><font face="Tahoma" size="-1">Richedit (and edit) control supports a flag to 
+  indicate whether its content is modified. We can obtain the value of this flag 
+  by sending <font color="#006666"><b>EM_GETMODIFY</b></font> message to the control. 
+  <font color="#006666"> <b>SendMessage</b></font> returns TRUE if the content 
+  of the control was modified. Since we stream the text into the control, it's 
+  a kind of a modification. We must set the modify flag to FALSE by sending <font color="#006666"><b>EM_SETMODIFY</b></font> 
+  with wParam==FALSE to the control to start anew after the stream-in opertion 
+  is finished. We immediately close the file and set <font color="#006666"><b>FileOpened</b></font> 
+  to TRUE to indicate that a file was opened.</font></p>
+<p><font face="Tahoma" size="-1">When the user clicks on save/saveas menuitem, 
+  we use <font color="#006666"><b>EM_STREAMOUT</b></font> message to output the 
+  content of the richedit control to a file. As with the streamin callback function, 
+  the stream-out callback function is simplicity in itself. It fits perfectly 
+  with <font color="#006666"><b>WriteFile</b></font>.</font></p>
+<p><font face="Tahoma" size="-1">The text operations such as cut/copy/paste/redo/undo 
+  are easily implemented by sending single message to the richedit control, <font color="#006666"><b>WM_CUT</b></font>/<font color="#006666"><b>WM_COPY</b></font>/<font color="#006666"><b>WM_PASTE</b></font>/<font color="#006666"><b>WM_REDO</b></font>/<font color="#006666"><b>WM_UNDO</b></font> 
+  respectively. </font></p>
+<p><font face="Tahoma" size="-1">The delete/select all operations are done as 
+  follows:</font></p>
+<pre><b><font face="Tahoma">			.elseif ax==IDM_DELETE
+				invoke SendMessage,hwndRichEdit,EM_REPLACESEL,TRUE,0
+			.elseif ax==IDM_SELECTALL
+				mov chrg.cpMin,0
+				mov chrg.cpMax,-1
+				invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr chrg</font></b></pre>
+<p><font face="Tahoma" size="-1">The delete operation affects the currently selection. 
+  I send <font color="#006666"><b>EM_REPLACESEL</b></font> message with NULL string 
+  so the richedit control will replace the currently selected text with the null 
+  string.</font></p>
+<p><font face="Tahoma" size="-1">The select-all operation is done by sending <font color="#006666"><b>EM_EXSETSEL</b></font> 
+  message, specifying <font color="#3300CC"><b>cpMin</b></font>==0 and <font color="#3300CC"><b>cpMax</b></font>==-1 
+  which amounts to selecting all the text. </font></p>
+<p><font face="Tahoma" size="-1">When the user selects Option menu bar, we display 
+  a dialog box presenting the current background/text colors.</font></p>
+<p align="center"><img src="images/option.jpg" width="281" height="120"></p>
+<p align="left"><font face="Tahoma" size="-1">When the user clicks on one of the 
+  color boxes, it displays the choose-color dialog box. The &quot;color box&quot; 
+  is in fact a static control with <font color="#006666"><b>SS_NOTIFY</b></font> 
+  and <font color="#006666"><b>WS_BORDER</b></font> flag. A static control with 
+  <font color="#006666"> <b>SS_NOTIFY</b></font> flag will notify its parent window 
+  with mouse actions on it, such as <font color="#006666"><b>BN_CLICKED</b></font> 
+  (<font color="#006666"><b>STN_CLICKED</b></font>)</font><font face="Tahoma" size="-1">. 
+  That's the trick.</font><b><font face="Tahoma" size="-1"> <br>
+  </font></b></p>
+<pre><b><font face="Tahoma">			.elseif ax==IDC_BACKCOLORBOX
+				invoke RtlZeroMemory,addr clr,sizeof clr
+				mov clr.lStructSize,sizeof clr
+				push hWnd
+				pop clr.hwndOwner
+				push hInstance
+				pop clr.hInstance
+				push BackgroundColor
+				pop clr.rgbResult
+				mov clr.lpCustColors,offset CustomColors
+				mov clr.Flags,CC_ANYCOLOR or CC_RGBINIT
+				invoke ChooseColor,addr clr
+				.if eax!=0
+					push clr.rgbResult
+					pop BackgroundColor
+					invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+					invoke InvalidateRect,eax,0,TRUE
+				.endif</font></b></pre>
+<p><font face="Tahoma" size="-1">When the user clicks on one of the color box, 
+  we fill the members of the <font color="#006666"><b>CHOOSECOLOR</b></font> structure 
+  and call <font color="#006666"><b>ChooseColor</b></font> to display the choose-color 
+  dialog box. If the user selects a color, the colorref value is returned in <font color="#0000CC"><b>rgbResult</b></font> 
+  member and we store that value in <font color="#990099"><b>BackgroundColor</b></font> 
+  variable. After that, we force a repaint on the color box by calling <font color="#006666"><b>InvalidateRect</b></font> 
+  on the handle to the color box. The color box sends <font color="#006666"><b>WM_CTLCOLORSTATIC</b></font> 
+  message to its parent window.</font></p>
+<pre><b><font face="Tahoma">		invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+		.if eax==lParam
+			invoke CreateSolidBrush,BackgroundColor			
+			ret</font></b></pre>
+<p><font face="Tahoma" size="-1">Within the <font color="#006666"><b>WM_CTLCOLORSTATIC</b></font> 
+  handler, we compare the handle of the static control passed in <font color="#990099"><b>lParam</b></font> 
+  to that of both the color boxes. </font><font face="Tahoma" size="-1">If the 
+  values match, we create a new brush using the color in the variable and immediately 
+  return. The static control will use the newly created brush to paint its background.</font></p>
+<hr>
+<p align="center"><font face="Tahoma" size="-1"><b>[<a href="http://win32asm.cjb.net">Iczelion's 
+  Win32 Assembly Homepage</a>]</b></font></p>
+</body>
+</html>

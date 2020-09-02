@@ -1,0 +1,13 @@
+
+
+
+mov esp,1
+
+
+LP1:
+inc esp 
+cmp esp,5
+------
+------
+int 80h
+jle LP1

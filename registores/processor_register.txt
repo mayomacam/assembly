@@ -1,0 +1,13 @@
+6 16bit processor register
+10 32bit processor register
+
+
+
+general registers
+control registers
+segment registers
+
+data registers
+pointer register
+index registers
+

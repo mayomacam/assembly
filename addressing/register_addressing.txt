@@ -1,0 +1,9 @@
+mov eax,4 -> the system call for write maens we are going to write data 
+mov ebx,1 -> standerd output
+mov ecx,abc ->put the offset of abc in ecx or store the hello variable
+mov edx,hellolen ->length
+
+int 80h/0x008 call the kernal 
+mov eax,1 -> means system call for exit
+mov ebx,0 -> means exit with return code of 0
+call the karnel again

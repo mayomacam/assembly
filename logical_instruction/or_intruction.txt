@@ -1,0 +1,6 @@
+or 
+
+
+mov esp,8
+mov ebp,12
+or esp,ebp

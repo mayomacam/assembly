@@ -1,0 +1,613 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.7 [en] (Win98; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 23: Tray Icon</title>
+</head>
+<body text="#CCCCCC" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFCC00">Tutorial 23: Tray Icon</font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>In this tutorial, we will learn
+how to put icons into system tray and how to create/use a popup menu.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Download the example <a href="files/tut23.zip">here</a>.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CC6600"><font size=-1>Theory:</font></font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>System tray is the rectangular
+region in the taskbar where several icons reside. Normally, you'll see
+at least a digital clock in it. You can also put icons in the system tray
+too. Below are the steps you have to perform to put an icon into the system
+tray:</font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Fill a <font color="#FFCC00">NOTIFYICONDATA</font>
+structure which has the following members:</font></font></li>
+
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">cbSize</font>&nbsp;&nbsp;
+The size of this structure.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hwnd</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Handle of the window that will receive notification when a mouse event
+occurs over the tray icon.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">uID</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+A constant that is used as the icon's identifier. You are the one who decides
+on this value. In case you have more than one tray icons, you will be able
+to check from what tray icon the mouse notification is from.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">uFlags</font>&nbsp;&nbsp;&nbsp;
+Specify which members of this structure are valid</font></font></li>
+
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#33CCFF">NIF_ICON</font></b>
+The hIcon member is valid.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#33CCFF">NIF_MESSAGE</font></b>
+The uCallbackMessage member is valid.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#33CCFF">NIF_TIP</font></b>
+The szTip member is valid.</font></font></li>
+</ul>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">uCallbackMessage</font>&nbsp;
+The custom message that Windows will send to the window specified by the
+hwnd member when mouse events occur over the tray icon. You create this
+message yourself.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hIcon</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The handle of the icon you want to put into the system tray</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">szTip</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+A 64-byte array that contains the string that will be used as the tooltip
+text when the mouse hovers over the tray icon.</font></font></li>
+</ul>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Call <font color="#FFFF00">Shell_NotifyIcon</font>
+which is defined in shell32.inc. This function has the following prototype:</font></font></li>
+
+<p><br><b><font face="Arial,Helvetica"><font color="#FFCC00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Shell_NotifyIcon PROTO dwMessage:DWORD ,pnid:DWORD</font></font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; <font color="#FFFF00">dwMessage</font>&nbsp;
+is the type of message to send to the shell.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b><font color="#33CCFF">NIM_ADD</font></b> Adds an icon to the status
+area.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b><font color="#33CCFF">NIM_DELETE</font></b> Deletes an icon from the
+status area.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b><font color="#33CCFF">NIM_MODIFY</font></b> Modifies an icon in the
+status area.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; <font color="#FFFF00">pnid</font>&nbsp;
+is the pointer to a <font color="#FFCC00">NOTIFYICONDATA</font> structure
+filled with proper values</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>If you want to add an icon
+to the tray, use NIM_ADD message, if you want to remove the icon, use NIM_DELETE.</font></font></ol>
+<font face="Arial,Helvetica"><font size=-1>That's all there is to it. But
+most of the time, you're not content in just putting an icon there. You
+need to be able to respond to the mouse events over the tray icon. You
+can do this by processing the message you specified in uCallbackMessage
+member of NOTIFYICONDATA structure. This message has the following values
+in wParam and lParam (special thanks to s__d for the info):</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>wParam contains the ID of the
+icon. This is the same value you put into uID member of NOTIFYICONDATA
+structure.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>lParam&nbsp; The low word contains
+the mouse message. For example, if the user right-clicked at the icon,
+lParam will contain WM_RBUTTONDOWN.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>Most tray icon, however, displays
+a popup menu when the user right-click on it. We can implement this feature
+by creating a popup menu and then call TrackPopupMenu to display it. The
+steps are described below:</font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Create a popup menu by calling
+<font color="#FFFF00">CreatePopupMenu</font>.
+This function creates an empty menu. It returns the menu handle in eax
+if successful.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Add menu items to it with <font color="#FFFF00">AppendMenu</font>,
+<font color="#FFFF00">InsertMenu</font>
+or <font color="#FFFF00">InsertMenuItem</font>.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>When you want to display the
+popup menu where the mouse cursor is, call GetCursorPos to obtain the screen
+coordinate of the cursor and then call <font color="#FFFF00">TrackPopupMenu</font>
+to display the menu. When the user selects a menu item from the popup menu,
+Windows sends WM_COMMAND message to your window procedure just like normal
+menu selection.</font></font></li>
+</ol>
+<font face="Arial,Helvetica"><font size=-1>Note: Beware of two annoying
+behaviors when you use a popup menu with a tray icon:</font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font size=-1>When the popup menu is displayed,
+if you click anywhere outside the menu, the popup menu will not disappear
+immediately as it should be. This behavior occurs because the window that
+will receive the notifications from the popup menu MUST be the foreground
+window. Just call SetForegroundWindow will correct it.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>After calling SetForegroundWindow,
+you will find that the first time the popup menu is displayed, it works
+ok but on the subsequent times, the popup menu will show up and close immediately.
+This behavior is "intentional", to quote from MSDN. The task switch to
+the program that is the owner of the tray icon in the near future is necessary.
+You can force this task switch by posting any message to the window of
+the program. Just use PostMessage, not SendMessage!</font></font></li>
+</ol>
+
+<h3>
+<font face="Arial,Helvetica"><font size=-1>Example:</font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option
+casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\shell32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\shell32.lib</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WM_SHELLNOTIFY
+equ WM_USER+5</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDI_TRAY
+equ 0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_RESTORE
+equ 1000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT
+equ 1010</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName&nbsp;
+db "TrayIconWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName&nbsp;&nbsp;&nbsp;
+db "TrayIcon Demo",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>RestoreString
+db "&amp;Restore",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ExitString&nbsp;&nbsp;
+db "E&amp;xit Program",0</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance
+dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>note
+NOTIFYICONDATA &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hPopupMenu
+dd ?</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW or CS_DBLCLKS</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_APPWORKSPACE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WS_OVERLAPPED+WS_CAPTION+WS_SYSMENU+WS_MINIMIZEBOX+WS_MAXIMIZEBOX+WS_VISIBLE,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,350,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+endp</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL pt:POINT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreatePopupMenu</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hPopupMenu,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke AppendMenu,hPopupMenu,MF_STRING,IDM_RESTORE,addr RestoreString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke AppendMenu,hPopupMenu,MF_STRING,IDM_EXIT,addr ExitString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyMenu,hPopupMenu</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_SIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if wParam==SIZE_MINIMIZED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.cbSize,sizeof NOTIFYICONDATA</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop note.hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uID,IDI_TRAY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uFlags,NIF_ICON+NIF_MESSAGE+NIF_TIP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uCallbackMessage,WM_SHELLNOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_WINLOGO</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcpy,addr note.szTip,addr AppName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ShowWindow,hWnd,SW_HIDE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke Shell_NotifyIcon,NIM_ADD,addr note</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke Shell_NotifyIcon,NIM_DELETE,addr note</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_RESTORE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ShowWindow,hWnd,SW_RESTORE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_SHELLNOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if wParam==IDI_TRAY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==WM_RBUTTONDOWN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetCursorPos,addr pt</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetForegroundWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TrackPopupMenu,hPopupMenu,TPM_RIGHTALIGN,pt.x,pt.y,NULL,hWnd,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostMessage,hWnd,WM_NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif lParam==WM_LBUTTONDBLCLK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hWnd,WM_COMMAND,IDM_RESTORE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+endp</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end
+start</font></font></font></b>
+<br>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>Analysis:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>The program
+will display a simple window. When you press the minimize button, it will
+hide itself and put an icon into the system tray. When you double-click
+on the icon, the program will restore itself and remove the icon from the
+system tray. When you right-click on it, a popup menu is displayed. You
+can choose to restore the program or exit it.</font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreatePopupMenu</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hPopupMenu,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke AppendMenu,hPopupMenu,MF_STRING,IDM_RESTORE,addr RestoreString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke AppendMenu,hPopupMenu,MF_STRING,IDM_EXIT,addr ExitString</font></font></font></b>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>When
+the main window is created, it creates a popup menu and append two menu
+items. AppendMenu has the following syntax:</font></font></font>
+<br>&nbsp;
+<blockquote><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppendMenu
+PROTO hMenu:DWORD, uFlags:DWORD, uIDNewItem:DWORD, lpNewItem:DWORD</font></font></font></b>
+<br>&nbsp;
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hMenu
+is the handle of the menu you want to append the item to</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>uFlags
+tells Windows about the menu item to be appended to the menu whether it
+is a bitmap or a string or an owner-draw item, enabled, grayed or disable
+etc. You can get the complete list from win32 api reference. In our example,
+we use MF_STRING which means the menu item is a string.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>uIDNewItem
+is the ID of the menu item. This is a user-defined value that is used to
+represent the menu item.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>lpNewItem
+specifies the content of the menu item, depending on what you specify in
+uFlags member. Since we specify MF_STRING in uFlags member, lpNewItem must
+contain the pointer to the string to be displayed in the popup menu.</font></font></font></li>
+</ul>
+</blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>After
+the popup menu is created, the main window waits patiently for the user
+to press minimize button.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>When
+a window is minimized, it receives WM_SIZE message with SIZE_MINIMIZED
+value in wParam.</font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_SIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if wParam==SIZE_MINIMIZED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.cbSize,sizeof NOTIFYICONDATA</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop note.hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uID,IDI_TRAY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uFlags,NIF_ICON+NIF_MESSAGE+NIF_TIP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.uCallbackMessage,WM_SHELLNOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_WINLOGO</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov note.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcpy,addr note.szTip,addr AppName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ShowWindow,hWnd,SW_HIDE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke Shell_NotifyIcon,NIM_ADD,addr note</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>We
+use this opportunity to fill NOTIFYICONDATA structure. IDI_TRAY is just
+a constant defined at the beginning of the source code. You can set it
+to any value you like. It's not important because you have only one tray
+icon. But if you will put several icons into the system tray, you need
+unique IDs for each tray icon. We specify all flags in uFlags member because
+we specify an icon (NIF_ICON), we specify a custom message (NIF_MESSAGE)
+and we specify the tooltip text (NIF_TIP). WM_SHELLNOTIFY is just a custom
+message defined as WM_USER+5. The actual value is not important so long
+as it's unique. I use the winlogo icon as the tray icon here but you can
+use any icon in your program. Just load it from the resource with LoadIcon
+and put the returned handle in hIcon member. Lastly, we fill the szTip
+with the text we want the shell to display when the mouse is over the icon.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>We
+hide the main window to give the illusion of "minimizing-to-tray-icon"
+appearance.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Next
+we call Shell_NotifyIcon&nbsp; with NIM_ADD message to add the icon to
+the system tray.</font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Now
+our main window is hidden and the icon is in the system tray. If you move
+the mouse over it, you will see a tooltip that displays the text we put
+into szTip member. Next, if you double-click at the icon, the main window
+will reappear and the tray icon is gone.</font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_SHELLNOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if wParam==IDI_TRAY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==WM_RBUTTONDOWN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetCursorPos,addr pt</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetForegroundWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TrackPopupMenu,hPopupMenu,TPM_RIGHTALIGN,pt.x,pt.y,NULL,hWnd,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostMessage,hWnd,WM_NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif lParam==WM_LBUTTONDBLCLK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hWnd,WM_COMMAND,IDM_RESTORE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>When
+a mouse event occurs over the tray icon, your window receives WM_SHELLNOTIFY
+message which is the custom message you specified in uCallbackMessage member.
+Recall that on receiving this message, wParam contains the tray icon's
+ID and lParam contains the actual mouse message. In the code above, we
+check first if this message comes from the tray icon we are interested
+in. If it does, we check the actual mouse message. Since we are only interested
+in right mouse click and double-left-click, we process only WM_RBUTTONDOWN
+and WM_LBUTTONDBLCLK messages.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>If
+the mouse message is WM_RBUTTONDOWN, we call GetCursorPos to obtain the
+current screen coordinate of the mouse cursor. When the function returns,
+the POINT structure is filled with the screen coordinate of the mouse cursor.
+By screen coordinate, I mean the coordinate of the entire screen without
+regarding to any window boundary. For example, if the screen resolution
+is 640*480, the right-lower corner of the screen is x==639 and y==479.
+If you want to convert the screen coordinate to window coordinate, use
+ScreenToClient function.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>However,
+for our purpose, we want to display the popup menu at the current mouse
+cursor position with TrackPopupMenu call and it requires screen coordinates,
+we can use the coordinates filled by GetCursorPos directly.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>TrackPopupMenu
+has the following syntax:</font></font></font>
+<br>&nbsp;
+<ul><b><font face="Arial,Helvetica"><font color="#CC6600"><font size=-1>TrackPopupMenu
+PROTO hMenu:DWORD, uFlags:DWORD,&nbsp; x:DWORD,&nbsp; y:DWORD, nReserved:DWORD,
+hWnd:DWORD, prcRect:DWORD</font></font></font></b>
+<br>&nbsp;
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hMenu</font><font color="#CCCCCC">
+is the handle of the popup menu to be displayed</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">uFlags</font><font color="#CCCCCC">
+specifies the options of the function. Like where to position the menu
+relative to the coordinates specified later and which mouse button will
+be used to track the menu. In our example, we use TPM_RIGHTALIGN to position
+the popup menu to the left of the coordinates.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">x</font><font color="#CCCCCC">
+and </font><font color="#FFFF00">y</font><font color="#CCCCCC"> specify
+the location of the menu in screen coordinates.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">nReserved</font><font color="#CCCCCC">
+must be NULL</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hWnd</font><font color="#CCCCCC">
+is the handle of the window that will receive the messages from the menu.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">prcRect</font><font color="#CCCCCC">
+is the rectangle in the screen where it is possible to click without dismissing
+the menu. Normally we put NULL here so when the user clicks anywhere outside
+the popup menu, the menu is dismissed.</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>When the
+user double-clicks at the tray icon, we send WM_COMMAND message to our
+own window specifying IDM_RESTORE to emulate the user selects Restore menu
+item in the popup menu thereby restoring the main window and removing the
+icon from the system tray. In order to be able to receive double click
+message, the main window must have CS_DBLCLKS style.</font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke Shell_NotifyIcon,NIM_DELETE,addr note</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_RESTORE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ShowWindow,hWnd,SW_RESTORE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>When
+the user selects Restore menu item, we remove the tray icon by calling
+Shell_NotifyIcon again, this time we specify NIM_DELETE as the message.
+Next, we restore the main window to its original state. If the user selects
+Exit menu item, we also remove the icon from the tray and destroy the main
+window by calling DestroyWindow.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly
+Homepage</a>]</b></center>
+
+</body>
+</html>

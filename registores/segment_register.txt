@@ -1,0 +1,3 @@
+data -> distorts all the data and constants and the works as well
+stack -> thus contains data and return address of datas
+code -> store all codes that are going to executed

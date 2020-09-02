@@ -1,0 +1,39 @@
+Following are the conditional jump instructions used on signed data used for arithmetic operations -
+
+Instruction	Description	                   Flags tested
+JE/JZ	     Jump Equal or Jump Zero	                ZF
+JNE/JNZ	     Jump not Equal or Jump Not Zero	        ZF
+JG/JNLE	     Jump Greater or Jump Not Less/Equal	OF, SF, ZF
+JGE/JNL	     Jump Greater/Equal or Jump Not Less	OF, SF
+JL/JNGE	     Jump Less or Jump Not Greater/Equal	OF, SF
+JLE/JNG	     Jump Less/Equal or Jump Not Greater	OF, SF, ZF
+
+
+
+Following are the conditional jump instructions used on unsigned data used for logical operations -
+
+Instruction	Description	                  Flags tested
+JE/JZ	        Jump Equal or Jump Zero	ZF
+JNE/JNZ	      Jump not Equal or Jump Not Zero	       ZF
+JA/JNBE	     Jump Above or Jump Not Below/Equal        CF, ZF
+JAE/JNB	     Jump Above/Equal or Jump Not Below	        CF
+JB/JNAE	     Jump Below or Jump Not Above/Equal	        CF
+JBE/JNA	     Jump Below/Equal or Jump Not Above   	AF, CF
+The following conditional jump instructions have special uses and check the value of flags -
+
+Instruction	Description	                      Flags tested
+JXCZ	Jump if CX is Zero	                         none
+JC	Jump If Carry	                                 CF
+JNC	Jump If No Carry	                         CF
+JO	Jump If Overflow	                         OF
+JNO	Jump If No Overflow	                         OF
+JP/JPE	Jump Parity or Jump Parity Even	                   PF
+JNP/JPO	Jump No Parity or Jump Parity Odd	           PF
+JS	Jump Sign (negative value)	                   SF
+JNS	Jump No Sign (positive value)	                   SF
+
+
+
+
+#==============================================================================
+

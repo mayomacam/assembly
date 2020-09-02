@@ -1,0 +1,12 @@
+xor
+ 00 0
+ 01 1
+ 10 1
+ 11 0
+
+mov esp,10
+mov ebp,3
+xor esp,ebp
+
+
+there is no need to ebp to value or register

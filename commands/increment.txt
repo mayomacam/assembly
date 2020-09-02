@@ -1,0 +1,12 @@
+allow to increment 
+
+inc [edx] 
+mov eax,4
+mov ebx,1
+mov ecx,hello
+
+output 
+
+hel
+
+if we print inc [edx] more times then it gonna print that many letters from hello variable

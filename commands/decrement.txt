@@ -1,0 +1,3 @@
+dec
+
+3 times from previous example and it's remove newline, ! and d

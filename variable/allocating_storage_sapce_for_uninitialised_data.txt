@@ -1,0 +1,17 @@
+resb  -> reserve byte -1 byte
+resw  -> reserve word -2 byte
+resd  -> reserve doubleword -4 byte
+resq  -> reserve quadword -8 byte
+rest  - reserve ten bytes -10 bytes
+
+
+section .bss
+var1: resb 4
+
+section .text
+global _start
+
+_start:
+  mov ebp,"hi"
+  mov [var1],ebp
+  mov ecx,var1

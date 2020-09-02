@@ -1,0 +1,360 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.7 [en] (Win98; I) [Netscape]">
+   <title>Iczelion's Win32asm Tutorial 25: Simple Bitmap</title>
+</head>
+<body text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFF99">Tutorial 25: Simple
+Bitmap</font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>In this tutorial, we will learn
+how to use bitmap in our program. To be exact, we will learn how to display
+a bitmap in the client area of our window. Download <a href="files/tut25.zip">the
+example</a>.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#FFCC33">Theory</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Bitmaps can be thought of as
+pictures stored in computer. There are many picture formats used with computers
+but Windows only natively supports Windows Bitmap Graphics files (.bmp).
+The bitmaps I'll refer to in this tutorial are Windows bitmap graphics
+files. The easiest way to use a bitmap is to use it as a resource. There
+are two ways to do that. You can include the bitmap in the resource definition
+file (.rc) as follows:</font></font>
+<br>&nbsp;
+<blockquote><font face="Arial,Helvetica">#define IDB_MYBITMAP&nbsp;&nbsp;
+100</font>
+<br><font face="Arial,Helvetica">IDB_MYBITMAP&nbsp; <b><font color="#FFFF99">BITMAP</font></b>&nbsp;
+"c:\project\example.bmp"</font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>This method uses a constant
+to represent the bitmap. The first line just creates a constant named IDB_MYBITMAP
+which has the value of 100. We will use this label to refer to the bitmap
+in the program. The next line declares a bitmap resource. It tells the
+resource compiler where to find the actual bmp file.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>The other method uses a
+name to represent the bitmap as follows:</font></font>
+<blockquote><font face="Arial,Helvetica">MyBitMap&nbsp; <b><font color="#FFFF99">BITMAP</font></b>
+"c:\project\example.bmp"</font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>This method requires that you
+refer to the bitmap in your program by the string "MyBitMap" instead of
+a value.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Either method works fine
+as long as you know which method you're using.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Now that we put the bitmap
+in the resource file, we can go on with the steps in displaying it in the
+client area of our window.</font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font size=-1>call LoadBitmap to get the bitmap
+handle. LoadBitmap has the following definition:</font></font></li>
+</ol>
+
+<ol>
+<ol><b><font face="Arial,Helvetica">LoadBitmap proto hInstance:HINSTANCE,
+lpBitmapName:LPSTR</font></b></ol>
+
+<p><br><font face="Arial,Helvetica"><font size=-1>This function returns
+a bitmap handle. hInstance is the instance handle of our program. lpBitmapName
+is a pointer to the string that is the name of the bitmap (incase you use
+the second method to refer to the bitmap). If you use a constant to refer
+to the bitmap (like IDB_MYBITMAP), you can put its value here. (In the
+example above it would be 100). A short example is in order:</font></font>
+<ol>&nbsp;
+<br><font face="Arial,Helvetica"><font size=-1>First Method:</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>.386</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.model flat, stdcall</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>................</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.const</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>IDB_MYBITMAP&nbsp;&nbsp;&nbsp;
+equ 100</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>...............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.data?</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>hInstance&nbsp; dd ?</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>..............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.code</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+GetModuleHandle,NULL</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov hInstance,eax</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+LoadBitmap,hInstance,IDB_MYBITMAP</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>...........</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>Second Method:</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>.386</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.model flat, stdcall</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>................</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.data</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>BitmapName&nbsp; db "MyBitMap",0</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>...............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.data?</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>hInstance&nbsp; dd ?</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>..............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.code</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>.............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+GetModuleHandle,NULL</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov hInstance,eax</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>............</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+LoadBitmap,hInstance,addr BitmapName</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>...........</font></font></ol>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Obtain a handle to device context
+(DC). You can obtain this handle by calling BeginPaint in response to WM_PAINT
+message or by calling GetDC anywhere.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Create a memory device context
+which has the same attribute as the device context we just obtained. The
+idea here is to create a kind of "hidden" drawing surface which we can
+draw the bitmap on. When we are finished with the operation, we just copy
+the content of the hidden drawing surface to the actual device context
+in one function call. It's an example of double-buffer technique used for
+fast display of pictures on the screen. You can create this "hidden" drawing
+surface by calling CreateCompatibleDC.</font></font></li>
+</ol>
+
+<ol>
+<ol><font face="Arial,Helvetica">CreateCompatibleDC&nbsp; proto&nbsp; hdc:HDC</font></ol>
+
+<p><br><font face="Arial,Helvetica"><font size=-1>If this function succeeds,
+it returns the handle of the memory device context in eax. hdc is the handle
+to the device context that you want the memory DC to be compatible with.</font></font>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Now that you got a hidden drawing
+surface, you can draw on it by selecting the bitmap into it. This is done
+by calling SelectObject with the handle to the memory DC as the first parameter
+and the bitmap handle as the second parameter. SelectObject has the following
+definition:</font></font></li>
+</ol>
+
+<ol>
+<ol><font face="Arial,Helvetica"><font size=-1>SelectObject&nbsp;&nbsp;
+proto&nbsp; hdc:HDC, hGdiObject:DWORD</font></font></ol>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>The bitmap is drawn on the memory
+device context now. All we need to do here is to copy it to the actual
+display device, namely the true device context. There are several functions
+that can perform this operation such as BitBlt and StretchBlt. BitBlt just
+copies the content of one DC to another so it's fast while StretchBlt can
+stretch or compress the bitmap to fit the output area. We will use BitBlt
+here for simplicity. BitBlt has the following definition:</font></font></li>
+</ol>
+
+<ol>
+<ol><font face="Arial,Helvetica"><font size=-1>BitBlt&nbsp; proto&nbsp;
+hdcDest:DWORD, nxDest:DWORD, nyDest:DWORD, nWidth:DWORD, nHeight:DWORD,
+hdcSrc:DWORD, nxSrc:DWORD, nySrc:DWORD, dwROP:DWORD</font></font>
+<br><font face="Arial,Helvetica"><font size=-1></font></font>&nbsp;</ol>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">hdcDest</font></b>
+is the handle of the device context that serves as the destination of bitmap
+transfer operation</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">nxDest,
+nyDest </font></b>are the coordinate of the upper left corner of the output
+area</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">nWidth,
+nHeight </font></b>are the width and height of the output area</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">hdcSrc
+</font></b>is
+the handle of the device context that serves as the source of bitmap transfer
+operation</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">nxSrc,
+nySrc </font></b>are the coordinate of the upper left corner of the source
+rectangle.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFFF99">dwROP
+</font></b>is
+the raster-operation code (hence the acronym ROP) that governs how to combine
+the color data of the bitmap to the existing color data on the output area
+to achieve the final result. Most of the time, you only want to overwrite
+the existing color data with the new one.</font></font>
+<li>
+<font face="Arial,Helvetica"><font size=-1>When you're done with the bitmap,
+delete it with DeleteObject API call.</font></font></li>
+</ol>
+<font face="Arial,Helvetica"><font size=-1>That's it! To recapitulate,
+you need to put the bitmap into the resource scipt. Then load it from the
+resource with LoadBitmap. You'll get the bitmap handle. Next you obtain
+the handle to the device context of the area you want to paint the bitmap
+on. Then you create a memory device context that is compatible with the
+device context you just obtained. Select the bitmap into the memory DC
+then copy the content of the memory DC to the real DC.</font></font>
+<h3>
+<font face="Arial,Helvetica">Example Code:</font></h3>
+<tt>.386</tt>
+<br><tt>.model flat,stdcall</tt>
+<br><tt>option casemap:none</tt>
+<br><tt>include \masm32\include\windows.inc</tt>
+<br><tt>include \masm32\include\user32.inc</tt>
+<br><tt>include \masm32\include\kernel32.inc</tt>
+<br><tt>include \masm32\include\gdi32.inc</tt>
+<br><tt>includelib \masm32\lib\user32.lib</tt>
+<br><tt>includelib \masm32\lib\kernel32.lib</tt>
+<br><tt>includelib \masm32\lib\gdi32.lib</tt>
+<p><tt>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</tt>
+<br><b><tt><font color="#66FF99">IDB_MAIN&nbsp;&nbsp; equ 1</font></tt></b>
+<p><tt>.data</tt>
+<br><tt>ClassName db "SimpleWin32ASMBitmapClass",0</tt>
+<br><tt>AppName&nbsp; db "Win32ASM Simple Bitmap Example",0</tt>
+<p><tt>.data?</tt>
+<br><tt>hInstance HINSTANCE ?</tt>
+<br><tt>CommandLine LPSTR ?</tt>
+<br><tt>hBitmap dd ?</tt>
+<p><tt>.code</tt>
+<br><tt>start:</tt>
+<br><tt>&nbsp;invoke GetModuleHandle, NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp; hInstance,eax</tt>
+<br><tt>&nbsp;invoke GetCommandLine</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp; CommandLine,eax</tt>
+<br><tt>&nbsp;invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</tt>
+<br><tt>&nbsp;invoke ExitProcess,eax</tt>
+<p><tt>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</tt>
+<br><tt>&nbsp;LOCAL wc:WNDCLASSEX</tt>
+<br><tt>&nbsp;LOCAL msg:MSG</tt>
+<br><tt>&nbsp;LOCAL hwnd:HWND</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbClsExtra,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.cbWndExtra,NULL</tt>
+<br><tt>&nbsp;push&nbsp; hInstance</tt>
+<br><tt>&nbsp;pop&nbsp;&nbsp; wc.hInstance</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpszMenuName,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</tt>
+<br><tt>&nbsp;invoke LoadIcon,NULL,IDI_APPLICATION</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hIcon,eax</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hIconSm,eax</tt>
+<br><tt>&nbsp;invoke LoadCursor,NULL,IDC_ARROW</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; wc.hCursor,eax</tt>
+<br><tt>&nbsp;invoke RegisterClassEx, addr wc</tt>
+<br><tt>&nbsp;INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</tt>
+<br><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hInst,NULL</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp; hwnd,eax</tt>
+<br><tt>&nbsp;invoke ShowWindow, hwnd,SW_SHOWNORMAL</tt>
+<br><tt>&nbsp;invoke UpdateWindow, hwnd</tt>
+<br><tt>&nbsp;.while TRUE</tt>
+<br><tt>&nbsp; invoke GetMessage, ADDR msg,NULL,0,0</tt>
+<br><tt>&nbsp; .break .if (!eax)</tt>
+<br><tt>&nbsp; invoke TranslateMessage, ADDR msg</tt>
+<br><tt>&nbsp; invoke DispatchMessage, ADDR msg</tt>
+<br><tt>&nbsp;.endw</tt>
+<br><tt>&nbsp;mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</tt>
+<br><tt>&nbsp;ret</tt>
+<br><tt>WinMain endp</tt>
+<p><tt>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</tt>
+<br><tt>&nbsp;&nbsp; LOCAL ps:PAINTSTRUCT</tt>
+<br><tt>&nbsp;&nbsp; LOCAL hdc:HDC</tt>
+<br><tt>&nbsp;&nbsp; LOCAL hMemDC:HDC</tt>
+<br><tt>&nbsp;&nbsp; LOCAL rect:RECT</tt>
+<br><tt>&nbsp;&nbsp; .if uMsg==WM_CREATE</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+LoadBitmap,hInstance,IDB_MAIN</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov hBitmap,eax</font></tt></b>
+<br><tt>&nbsp;&nbsp; .elseif uMsg==WM_PAINT</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+BeginPaint,hWnd,addr ps</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+hdc,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+CreateCompatibleDC,hdc</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+hMemDC,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+SelectObject,hMemDC,hBitmap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+GetClientRect,hWnd,addr rect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+BitBlt,hdc,0,0,rect.right,rect.bottom,hMemDC,0,0,SRCCOPY</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+DeleteDC,hMemDC</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+EndPaint,hWnd,addr ps</font></tt></b>
+<br><tt>&nbsp;.elseif uMsg==WM_DESTROY</tt>
+<br><b><tt><font color="#66FF99">&nbsp; invoke DeleteObject,hBitmap</font></tt></b>
+<br><tt>&nbsp; invoke PostQuitMessage,NULL</tt>
+<br><tt>&nbsp;.ELSE</tt>
+<br><tt>&nbsp; invoke DefWindowProc,hWnd,uMsg,wParam,lParam</tt>
+<br><tt>&nbsp; ret</tt>
+<br><tt>&nbsp;.ENDIF</tt>
+<br><tt>&nbsp;xor eax,eax</tt>
+<br><tt>&nbsp;ret</tt>
+<br><tt>WndProc endp</tt>
+<br><tt>end start</tt>
+<p><tt>;---------------------------------------------------------------------</tt>
+<br><tt>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The resource script</tt>
+<br><tt>;---------------------------------------------------------------------</tt>
+<br><b><tt><font color="#FFFF99">#define IDB_MAIN 1</font></tt></b>
+<br><b><tt><font color="#FFFF99">IDB_MAIN BITMAP "tweety78.bmp"</font></tt></b>
+<h3>
+<font face="Arial,Helvetica"><font size=+1>Analysis:</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>There is not much to analyze
+in this tutorial ;)</font></font>
+<br>&nbsp;
+<blockquote><b><tt><font color="#FFFF99">#define IDB_MAIN 1</font></tt></b>
+<br><b><tt><font color="#FFFF99">IDB_MAIN BITMAP "tweety78.bmp"</font></tt></b></blockquote>
+<b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Define
+a constant named IDB_MAIN, assign 1 as its value. And then use that constant
+as the bitmap resource identifier. The bitmap file to be included in the
+resource is "tweety78.bmp" which resides in the same folder as the resource
+script.</font></font></font></b>
+<p><tt>&nbsp;&nbsp; .if uMsg==WM_CREATE</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+LoadBitmap,hInstance,IDB_MAIN</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov hBitmap,eax</font></tt></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>In
+response to WM_CREATE, we call LoadBitmap to load the bitmap from the resource,
+passing the bitmap's resource identifier as the second parameter to the
+API. We get the handle to the bitmap when the function returns.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Now
+that the bitmap is loaded, we can paint it in the client area of our main
+window.</font></font></font></b>
+<p><tt>&nbsp;&nbsp; .elseif uMsg==WM_PAINT</tt>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+BeginPaint,hWnd,addr ps</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+hdc,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+CreateCompatibleDC,hdc</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+hMemDC,eax</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+SelectObject,hMemDC,hBitmap</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+GetClientRect,hWnd,addr rect</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+BitBlt,hdc,0,0,rect.right,rect.bottom,hMemDC,0,0,SRCCOPY</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+DeleteDC,hMemDC</font></tt></b>
+<br><b><tt><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke
+EndPaint,hWnd,addr ps</font></tt></b>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>We
+choose to paint the bitmap in response to WM_PAINT message. We first call
+BeginPaint to obtain the handle to the device context. Then we create a
+compatible memory DC with CreateCompatibleDC. Next select the bitmap into
+the memory DC with SelectObject. Determine the dimension of the client
+area with GetClientRect. Now we can display the bitmap in the client area
+by calling BitBlt which copies the bitmap from the memory DC to the real
+DC. When the painting is done, we have no further need for the memory DC
+so we delete it with DeleteDC. End painting session with EndPaint.</font></font></font>
+<blockquote><tt>&nbsp;.elseif uMsg==WM_DESTROY</tt>
+<br><b><tt><font color="#66FF99">&nbsp; invoke DeleteObject,hBitmap</font></tt></b>
+<br><tt>&nbsp; invoke PostQuitMessage,NULL</tt></blockquote>
+<font face="Arial,Helvetica"><font size=-1>When we don't need the bitmap
+anymore, we delete it with DeleteObject</font></font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly
+HomePage</a>]</b></center>
+
+</body>
+</html>

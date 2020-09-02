@@ -1,0 +1,13 @@
+nasm -f elf hello-world.asm
+gcc -m32 hello-world.o -o hello-world.out
+./hello-world.out
+
+#================================================================================================================
+
+
+    db: Declares byte values(of size 1 byte).
+    dw: Declares word values(of size 2 bytes).
+    dd: Declares double word values(of size 4 bytes).
+
+#=================================================================================================================
+

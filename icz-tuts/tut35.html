@@ -1,0 +1,1668 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 35: RichEdit Control: Syntax Hilighting</title>
+<meta http-equiv="Content-Type" content="text/html; charset=">
+</head>
+
+<body bgcolor="#FFFFFF">
+<h1 align="center"><font face="Tahoma" color="#0000FF">Tutorial 35: RichEdit Control: 
+  Syntax Hilighting</font></h1>
+<p align="left"><font face="Tahoma" size="-1">Before reading this tutorial, let 
+  me warn you that it's a complicated subject: not suited for a beginner. This 
+  is the last in the richedit control tutorials.</font></p>
+<p align="left"><font face="Tahoma" size="-1">Download <a href="files/tut35.zip">the 
+  example</a>.</font></p>
+<h3 align="left"><font face="Times New Roman, Times, serif" color="#0000FF">Theory</font></h3>
+<p align="left"><font face="Tahoma" size="-1">Syntax hilighting is a subject of 
+  hot debate for those writing text editors. The best method (in my opinion) is 
+  to code a custom edit control and this is the approach taken by lots of commercial 
+  softwares. However, for those of us who don't have time for coding such control, 
+  the next best thing is to adapt the existing control to make it suit our need.</font></p>
+<p align="left"><font face="Tahoma" size="-1">Let us take a look at what RichEdit 
+  control provides to help us in implementing syntax hilighting. I should state 
+  at this moment that the following method is not the &quot;correct&quot; path: 
+  I just want to show you the pitfall that many fall for. RichEdit control provides 
+  <font color="#006666"> <b>EM_SETCHARFORMAT</b></font> message that you can use 
+  to change the color of the text. At first glance, this message seems to be the 
+  perfect solution (I know because I was one of the victim). However, a closer 
+  examination will show you several things that are undesirable:</font></p>
+<ul>
+  <li><font face="Tahoma" size="-1"><b><font color="#006666">EM_SETCHARFORMAT</font></b> 
+    only works for a text currently in selection or all text in the control. If 
+    you want to change the text color (hilight) a certain word, you must first 
+    select it.</font></li>
+  <li><font face="Tahoma" size="-1"><b><font color="#006666">EM_SETCHARFORMAT</font></b> 
+    is very slow</font></li>
+  <li><font face="Tahoma" size="-1">It has a problem with the caret position in 
+    the richedit control</font></li>
+</ul>
+<p><font face="Tahoma" size="-1">With the above discussion, you can see that using 
+  <font color="#006666"> <b>EM_SETCHARFORMAT</b></font> is a wrong choice. I'll 
+  show you the &quot;relatively correct&quot; choice.</font></p>
+<p><font face="Tahoma" size="-1">The method I currently use is &quot;syntax hilighting 
+  just-in-time&quot;. I'll hilight only the visible portion of text. Thus the 
+  speed of the hilighting will not be related to the size of the file at all. 
+  No matter how large the file, only a small portion of it is visible at one time.</font></p>
+<p><font face="Tahoma" size="-1">How to do that? The answer is simple: </font></p>
+<ol>
+  <li><font face="Tahoma" size="-1">subclass the richedit control and handle <font color="#006666"><b>WM_PAINT</b></font> 
+    message within your own window procedure</font></li>
+  <li><font face="Tahoma" size="-1">When it receives <font color="#006666"><b>WM_PAINT</b></font> 
+    message, it calls the original window procedure of the richedit control to 
+    let it update the screen as usual.</font></li>
+  <li><font face="Tahoma" size="-1">After that, we overwrite the words to be hilighted 
+    with different color</font></li>
+</ol>
+<p><font face="Tahoma" size="-1">Of course, the road is not that easy: there are 
+  still a couple of minor things to fix but the above method works quite nicely. 
+  The display speed is very satisfactory.</font></p>
+<p><font face="Tahoma" size="-1">Now let's concentrate on the detail. The subclassing 
+  process is simple and doesn't require much attention. The really complicated 
+  part is when we have to find a fast way of searching for the words to be hilighted. 
+  This is further complicated by the need <font color="#006666"><b>not</b></font> 
+  to hilight any word within a comment block. </font></p>
+<p><font face="Tahoma" size="-1">The method I use may not be the best but it works 
+  ok. I'm sure you can find a faster way. Anyway, here it is:</font></p>
+<ul>
+  <li><font face="Tahoma" size="-1">I create a 256 dword array, initialized to 
+    0. Each dword corresponds to a possible ASCII character,named <font color="#0000CC"><b>ASMSyntaxArray</b></font>. 
+    For example, the 21th dword represents the ascii 20h (space). I use them as 
+    a fast lookup table: For example, if I have the word &quot;include&quot;, 
+    I'll extract the first character (i) from the word and look up the dword at 
+    the corresponding index. If that dword is 0, I know immediately that there 
+    is no words to be hilighted starting with &quot;i&quot;. If the dword is non-zero, 
+    it contains the pointer to the linked list of the <font color="#006666"><b>WORDINFO</b></font> 
+    structure which contains the information about the word to be hilighted.</font></li>
+  <li><font face="Tahoma" size="-1">I read the words to be hilighted and create 
+    a <font color="#006666"><b>WORDINFO</b></font> structure for each of them.</font></li>
+</ul>
+<pre><font face="Tahoma"><b>			WORDINFO struct 
+				WordLen dd ? 		; the length of the word: used as a quick comparison    
+				pszWord dd ? 	; pointer to the word 
+				pColor dd ? 		; point to the dword that contains the color used to hilite the word 
+				NextLink dd ? 		; point to the next WORDINFO structure 
+			WORDINFO ends </b></font>
+</pre>
+<blockquote> 
+  <p><font face="Tahoma" size="-1">As you can see, I use the length of the word 
+    as the second quick comparison. If the first character of the word matches, 
+    we next compare its length to the available words. Each dword in <font color="#0000CC"><b>ASMSyntaxArray</b></font> 
+    contains a pointer to the head of the associated <font color="#006666"><b>WORDINFO</b></font> 
+    array. For example, the dword that represents the character &quot;i&quot; 
+    will contain the pointer to the linked list of the words that begin with &quot;i&quot;. 
+    <font color="#990099"> <b>pColor</b></font> member points to the dword that 
+    contains the color value used to hilight the word. <font color="#990099"><b>pszWord</b></font> 
+    points to the word to be hilighted, in lowercase.</font></p>
+</blockquote>
+<ul>
+  <li><font face="Tahoma" size="-1">The memory for the linked list is allocated 
+    from the default heap so it's fast and easy to clean up, ie, no cleaning up 
+    required at all.</font></li>
+</ul>
+<p><font face="Tahoma" size="-1">The word list is stored in a file named &quot;wordfile.txt&quot; 
+  and I access it with <font color="#000099"><b>GetPrivateProfileString</b></font> 
+  APIs. I provide as many as 10 different syntax coloring, starting from C1 to 
+  C10. The color array is named <font color="#006666"><b>ASMColorArray</b></font>. 
+  pColor member of each <font color="#006666"><b>WORDINFO</b></font> structure 
+  points to one of the dwords in <font color="#006666"><b>ASMColorArray</b></font>. 
+  Thus it is easy to change the syntax coloring on the fly: you just change the 
+  dword in <font color="#006666"><b>ASMColorArray</b></font> and all words using 
+  that color will use the new color immediately. </font></p>
+<h3><font face="Times New Roman, Times, serif" color="#0000CC">Example</font></h3>
+<pre><font face="Tahoma"><b>.386
+.model flat,stdcall
+option casemap:none
+include \masm32\include\windows.inc
+include \masm32\include\user32.inc
+include \masm32\include\comdlg32.inc
+include \masm32\include\gdi32.inc
+include \masm32\include\kernel32.inc
+includelib \masm32\lib\gdi32.lib
+includelib \masm32\lib\comdlg32.lib
+includelib \masm32\lib\user32.lib
+includelib \masm32\lib\kernel32.lib
+
+WinMain proto :DWORD,:DWORD,:DWORD,:DWORD
+
+WORDINFO struct
+	WordLen dd ?		; the length of the word: used as a quick comparison
+	pszWord dd ?		; pointer to the word
+	pColor dd ?		; point to the dword that contains the color used to hilite the word
+	NextLink dd ?		; point to the next WORDINFO structure
+WORDINFO ends
+
+.const
+IDR_MAINMENU                   equ 101
+IDM_OPEN                      equ  40001
+IDM_SAVE                       equ 40002
+IDM_CLOSE                      equ 40003
+IDM_SAVEAS                     equ 40004
+IDM_EXIT                       equ 40005
+IDM_COPY                      equ  40006
+IDM_CUT                       equ  40007
+IDM_PASTE                      equ 40008
+IDM_DELETE                     equ 40009
+IDM_SELECTALL                  equ 40010
+IDM_OPTION 			equ 40011
+IDM_UNDO			equ 40012
+IDM_REDO			equ 40013
+IDD_OPTIONDLG                  equ 101
+IDC_BACKCOLORBOX               equ 1000
+IDC_TEXTCOLORBOX               equ 1001
+IDR_MAINACCEL                 equ  105
+IDD_FINDDLG                    equ 102
+IDD_GOTODLG                    equ 103
+IDD_REPLACEDLG                 equ 104
+IDC_FINDEDIT                  equ  1000
+IDC_MATCHCASE                  equ 1001
+IDC_REPLACEEDIT                 equ 1001
+IDC_WHOLEWORD                  equ 1002
+IDC_DOWN                       equ 1003
+IDC_UP                       equ   1004
+IDC_LINENO                   equ   1005
+IDM_FIND                       equ 40014
+IDM_FINDNEXT                  equ  40015
+IDM_REPLACE                     equ 40016
+IDM_GOTOLINE                   equ 40017
+IDM_FINDPREV                  equ  40018
+RichEditID 			equ 300
+
+.data
+ClassName db "IczEditClass",0
+AppName  db "IczEdit version 3.0",0
+RichEditDLL db "riched20.dll",0
+RichEditClass db "RichEdit20A",0
+NoRichEdit db "Cannot find riched20.dll",0
+ASMFilterString 		db "ASM Source code (*.asm)",0,"*.asm",0
+				db "All Files (*.*)",0,"*.*",0,0
+OpenFileFail db "Cannot open the file",0
+WannaSave db "The data in the control is modified. Want to save it?",0
+FileOpened dd FALSE
+BackgroundColor dd 0FFFFFFh		; default to white
+TextColor dd 0		; default to black
+WordFileName db "\wordfile.txt",0
+ASMSection db "ASSEMBLY",0
+C1Key db "C1",0
+C2Key db "C2",0
+C3Key db "C3",0
+C4Key db "C4",0
+C5Key db "C5",0
+C6Key db "C6",0
+C7Key db "C7",0
+C8Key db "C8",0
+C9Key db "C9",0
+C10Key db "C10",0
+ZeroString db 0
+ASMColorArray dd 0FF0000h,0805F50h,0FFh,666F00h,44F0h,5F8754h,4 dup(0FF0000h)
+CommentColor dd 808000h
+
+.data?
+hInstance dd ?
+hRichEdit dd ?
+hwndRichEdit dd ?
+FileName db 256 dup(?)
+AlternateFileName db 256 dup(?)
+CustomColors dd 16 dup(?)
+FindBuffer db 256 dup(?)
+ReplaceBuffer db 256 dup(?)
+uFlags dd ?
+findtext FINDTEXTEX <>
+ASMSyntaxArray dd 256 dup(?)
+hSearch dd ?		; handle to the search/replace dialog box
+hAccel dd ?
+hMainHeap dd ?		; heap handle
+OldWndProc dd ?
+RichEditVersion dd ?
+
+.code
+start:
+	mov byte ptr [FindBuffer],0
+	mov byte ptr [ReplaceBuffer],0
+	invoke GetModuleHandle, NULL
+	mov    hInstance,eax
+	invoke LoadLibrary,addr RichEditDLL
+	.if eax!=0
+		mov hRichEdit,eax
+		invoke GetProcessHeap
+		mov hMainHeap,eax
+		call FillHiliteInfo
+		invoke WinMain, hInstance,0,0, SW_SHOWDEFAULT
+		invoke FreeLibrary,hRichEdit
+	.else
+		invoke MessageBox,0,addr NoRichEdit,addr AppName,MB_OK or MB_ICONERROR
+	.endif
+	invoke ExitProcess,eax
+	
+WinMain proc hInst:DWORD,hPrevInst:DWORD,CmdLine:DWORD,CmdShow:DWORD
+	LOCAL wc:WNDCLASSEX
+	LOCAL msg:MSG
+	LOCAL hwnd:DWORD
+	mov   wc.cbSize,SIZEOF WNDCLASSEX
+	mov   wc.style, CS_HREDRAW or CS_VREDRAW
+	mov   wc.lpfnWndProc, OFFSET WndProc
+	mov   wc.cbClsExtra,NULL
+	mov   wc.cbWndExtra,NULL
+	push  hInst
+	pop   wc.hInstance
+	mov   wc.hbrBackground,COLOR_WINDOW+1
+	mov   wc.lpszMenuName,IDR_MAINMENU
+	mov   wc.lpszClassName,OFFSET ClassName
+	invoke LoadIcon,NULL,IDI_APPLICATION
+	mov   wc.hIcon,eax
+	mov   wc.hIconSm,eax
+	invoke LoadCursor,NULL,IDC_ARROW
+	mov   wc.hCursor,eax
+	invoke RegisterClassEx, addr wc
+	INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\
+           WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\
+           CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\
+           hInst,NULL
+	mov   hwnd,eax
+	invoke ShowWindow, hwnd,SW_SHOWNORMAL
+	invoke UpdateWindow, hwnd
+	invoke LoadAccelerators,hInstance,IDR_MAINACCEL
+	mov hAccel,eax
+	.while TRUE
+		invoke GetMessage, ADDR msg,0,0,0
+		.break .if (!eax)
+		invoke IsDialogMessage,hSearch,addr msg
+		.if eax==FALSE
+			invoke TranslateAccelerator,hwnd,hAccel,addr msg
+			.if eax==0
+				invoke TranslateMessage, ADDR msg
+				invoke DispatchMessage, ADDR msg
+			.endif
+		.endif
+	.endw
+	mov   eax,msg.wParam
+	ret
+WinMain endp
+
+StreamInProc proc hFile:DWORD,pBuffer:DWORD, NumBytes:DWORD, pBytesRead:DWORD
+	invoke ReadFile,hFile,pBuffer,NumBytes,pBytesRead,0
+	xor eax,1
+	ret
+StreamInProc endp
+
+StreamOutProc proc hFile:DWORD,pBuffer:DWORD, NumBytes:DWORD, pBytesWritten:DWORD
+	invoke WriteFile,hFile,pBuffer,NumBytes,pBytesWritten,0
+	xor eax,1
+	ret
+StreamOutProc endp
+
+CheckModifyState proc hWnd:DWORD
+	invoke SendMessage,hwndRichEdit,EM_GETMODIFY,0,0
+	.if eax!=0
+		invoke MessageBox,hWnd,addr WannaSave,addr AppName,MB_YESNOCANCEL
+		.if eax==IDYES
+			invoke SendMessage,hWnd,WM_COMMAND,IDM_SAVE,0
+		.elseif eax==IDCANCEL
+			mov eax,FALSE
+			ret
+		.endif
+	.endif
+	mov eax,TRUE
+	ret
+CheckModifyState endp
+
+SetColor proc
+	LOCAL cfm:CHARFORMAT	
+	invoke SendMessage,hwndRichEdit,EM_SETBKGNDCOLOR,0,BackgroundColor
+	invoke RtlZeroMemory,addr cfm,sizeof cfm
+	mov cfm.cbSize,sizeof cfm
+	mov cfm.dwMask,CFM_COLOR
+	push TextColor
+	pop cfm.crTextColor
+	invoke SendMessage,hwndRichEdit,EM_SETCHARFORMAT,SCF_ALL,addr cfm
+	ret
+SetColor endp
+
+OptionProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL clr:CHOOSECOLOR
+	.if uMsg==WM_INITDIALOG
+	.elseif uMsg==WM_COMMAND
+		mov eax,wParam
+		shr eax,16
+		.if ax==BN_CLICKED
+			mov eax,wParam
+			.if ax==IDCANCEL
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.elseif ax==IDC_BACKCOLORBOX
+				invoke RtlZeroMemory,addr clr,sizeof clr
+				mov clr.lStructSize,sizeof clr
+				push hWnd
+				pop clr.hwndOwner
+				push hInstance
+				pop clr.hInstance
+				push BackgroundColor
+				pop clr.rgbResult
+				mov clr.lpCustColors,offset CustomColors
+				mov clr.Flags,CC_ANYCOLOR or CC_RGBINIT
+				invoke ChooseColor,addr clr
+				.if eax!=0
+					push clr.rgbResult
+					pop BackgroundColor
+					invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+					invoke InvalidateRect,eax,0,TRUE
+				.endif
+			.elseif ax==IDC_TEXTCOLORBOX
+				invoke RtlZeroMemory,addr clr,sizeof clr
+				mov clr.lStructSize,sizeof clr
+				push hWnd
+				pop clr.hwndOwner
+				push hInstance
+				pop clr.hInstance
+				push TextColor
+				pop clr.rgbResult
+				mov clr.lpCustColors,offset CustomColors
+				mov clr.Flags,CC_ANYCOLOR or CC_RGBINIT
+				invoke ChooseColor,addr clr
+				.if eax!=0
+					push clr.rgbResult
+					pop TextColor
+					invoke GetDlgItem,hWnd,IDC_TEXTCOLORBOX
+					invoke InvalidateRect,eax,0,TRUE
+				.endif
+			.elseif ax==IDOK
+				invoke SendMessage,hwndRichEdit,EM_GETMODIFY,0,0
+				push eax
+				invoke SetColor
+				pop eax
+				invoke SendMessage,hwndRichEdit,EM_SETMODIFY,eax,0
+				invoke EndDialog,hWnd,0
+			.endif
+		.endif
+	.elseif uMsg==WM_CTLCOLORSTATIC
+		invoke GetDlgItem,hWnd,IDC_BACKCOLORBOX
+		.if eax==lParam
+			invoke CreateSolidBrush,BackgroundColor			
+			ret
+		.else
+			invoke GetDlgItem,hWnd,IDC_TEXTCOLORBOX
+			.if eax==lParam
+				invoke CreateSolidBrush,TextColor
+				ret
+			.endif
+		.endif
+		mov eax,FALSE
+		ret
+	.elseif uMsg==WM_CLOSE
+		invoke EndDialog,hWnd,0
+	.else
+		mov eax,FALSE
+		ret
+	.endif
+	mov eax,TRUE
+	ret
+OptionProc endp
+
+SearchProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	.if uMsg==WM_INITDIALOG
+		push hWnd
+		pop hSearch
+		invoke CheckRadioButton,hWnd,IDC_DOWN,IDC_UP,IDC_DOWN
+		invoke SendDlgItemMessage,hWnd,IDC_FINDEDIT,WM_SETTEXT,0,addr FindBuffer
+	.elseif uMsg==WM_COMMAND
+		mov eax,wParam
+		shr eax,16
+		.if ax==BN_CLICKED
+			mov eax,wParam
+			.if ax==IDOK
+				mov uFlags,0
+				invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr findtext.chrg
+				invoke GetDlgItemText,hWnd,IDC_FINDEDIT,addr FindBuffer,sizeof FindBuffer
+				.if eax!=0
+					invoke IsDlgButtonChecked,hWnd,IDC_DOWN
+					.if eax==BST_CHECKED
+						or uFlags,FR_DOWN
+						mov eax,findtext.chrg.cpMin
+						.if eax!=findtext.chrg.cpMax
+							push findtext.chrg.cpMax
+							pop findtext.chrg.cpMin
+						.endif
+						mov findtext.chrg.cpMax,-1
+					.else
+						mov findtext.chrg.cpMax,0
+					.endif
+					invoke IsDlgButtonChecked,hWnd,IDC_MATCHCASE
+					.if eax==BST_CHECKED
+						or uFlags,FR_MATCHCASE
+					.endif
+					invoke IsDlgButtonChecked,hWnd,IDC_WHOLEWORD
+					.if eax==BST_CHECKED
+						or uFlags,FR_WHOLEWORD
+					.endif
+					mov findtext.lpstrText,offset FindBuffer
+					invoke SendMessage,hwndRichEdit,EM_FINDTEXTEX,uFlags,addr findtext
+					.if eax!=-1
+						invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr findtext.chrgText
+					.endif
+				.endif
+			.elseif ax==IDCANCEL
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.else
+				mov eax,FALSE
+				ret
+			.endif
+		.endif
+	.elseif uMsg==WM_CLOSE
+		mov hSearch,0
+		invoke EndDialog,hWnd,0
+	.else
+		mov eax,FALSE
+		ret
+	.endif
+	mov eax,TRUE
+	ret
+SearchProc endp
+
+ReplaceProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL settext:SETTEXTEX
+	.if uMsg==WM_INITDIALOG
+		push hWnd
+		pop hSearch
+		invoke SetDlgItemText,hWnd,IDC_FINDEDIT,addr FindBuffer
+		invoke SetDlgItemText,hWnd,IDC_REPLACEEDIT,addr ReplaceBuffer
+	.elseif uMsg==WM_COMMAND
+		mov eax,wParam
+		shr eax,16
+		.if ax==BN_CLICKED
+			mov eax,wParam
+			.if ax==IDCANCEL
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.elseif ax==IDOK
+				invoke GetDlgItemText,hWnd,IDC_FINDEDIT,addr FindBuffer,sizeof FindBuffer
+				invoke GetDlgItemText,hWnd,IDC_REPLACEEDIT,addr ReplaceBuffer,sizeof ReplaceBuffer
+				mov findtext.chrg.cpMin,0
+				mov findtext.chrg.cpMax,-1
+				mov findtext.lpstrText,offset FindBuffer
+				mov settext.flags,ST_SELECTION
+				mov settext.codepage,CP_ACP
+				.while TRUE
+					invoke SendMessage,hwndRichEdit,EM_FINDTEXTEX,FR_DOWN,addr findtext
+					.if eax==-1
+						.break
+					.else
+						invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr findtext.chrgText
+						invoke SendMessage,hwndRichEdit,EM_SETTEXTEX,addr settext,addr ReplaceBuffer
+					.endif
+				.endw
+			.endif
+		.endif
+	.elseif uMsg==WM_CLOSE
+		mov hSearch,0
+		invoke EndDialog,hWnd,0
+	.else
+		mov eax,FALSE
+		ret
+	.endif
+	mov eax,TRUE
+	ret
+ReplaceProc endp
+
+GoToProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL LineNo:DWORD
+	LOCAL chrg:CHARRANGE
+	.if uMsg==WM_INITDIALOG
+		push hWnd
+		pop hSearch
+	.elseif uMsg==WM_COMMAND
+		mov eax,wParam
+		shr eax,16
+		.if ax==BN_CLICKED
+			mov eax,wParam
+			.if ax==IDCANCEL
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.elseif ax==IDOK
+				invoke GetDlgItemInt,hWnd,IDC_LINENO,NULL,FALSE
+				mov LineNo,eax
+				invoke SendMessage,hwndRichEdit,EM_GETLINECOUNT,0,0
+				.if eax>LineNo
+					invoke SendMessage,hwndRichEdit,EM_LINEINDEX,LineNo,0
+					invoke SendMessage,hwndRichEdit,EM_SETSEL,eax,eax
+					invoke SetFocus,hwndRichEdit
+				.endif
+			.endif
+		.endif
+	.elseif uMsg==WM_CLOSE
+		mov hSearch,0
+		invoke EndDialog,hWnd,0
+	.else
+		mov eax,FALSE
+		ret
+	.endif
+	mov eax,TRUE
+	ret
+GoToProc endp
+
+PrepareEditMenu proc hSubMenu:DWORD
+	LOCAL chrg:CHARRANGE
+	invoke SendMessage,hwndRichEdit,EM_CANPASTE,CF_TEXT,0
+	.if eax==0		; no text in the clipboard
+		invoke EnableMenuItem,hSubMenu,IDM_PASTE,MF_GRAYED
+	.else
+		invoke EnableMenuItem,hSubMenu,IDM_PASTE,MF_ENABLED
+	.endif
+	invoke SendMessage,hwndRichEdit,EM_CANUNDO,0,0
+	.if eax==0
+		invoke EnableMenuItem,hSubMenu,IDM_UNDO,MF_GRAYED
+	.else
+		invoke EnableMenuItem,hSubMenu,IDM_UNDO,MF_ENABLED
+	.endif
+	invoke SendMessage,hwndRichEdit,EM_CANREDO,0,0
+	.if eax==0
+		invoke EnableMenuItem,hSubMenu,IDM_REDO,MF_GRAYED
+	.else
+		invoke EnableMenuItem,hSubMenu,IDM_REDO,MF_ENABLED
+	.endif
+	invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr chrg
+	mov eax,chrg.cpMin
+	.if eax==chrg.cpMax		; no current selection
+		invoke EnableMenuItem,hSubMenu,IDM_COPY,MF_GRAYED
+		invoke EnableMenuItem,hSubMenu,IDM_CUT,MF_GRAYED
+		invoke EnableMenuItem,hSubMenu,IDM_DELETE,MF_GRAYED
+	.else
+		invoke EnableMenuItem,hSubMenu,IDM_COPY,MF_ENABLED
+		invoke EnableMenuItem,hSubMenu,IDM_CUT,MF_ENABLED
+		invoke EnableMenuItem,hSubMenu,IDM_DELETE,MF_ENABLED
+	.endif
+	ret
+PrepareEditMenu endp
+
+ParseBuffer proc uses edi esi hHeap:DWORD,pBuffer:DWORD, nSize:DWORD, ArrayOffset:DWORD,pArray:DWORD
+	LOCAL buffer[128]:BYTE
+	LOCAL InProgress:DWORD
+	mov InProgress,FALSE
+	lea esi,buffer
+	mov edi,pBuffer
+	invoke CharLower,edi
+	mov ecx,nSize
+SearchLoop:
+	or ecx,ecx
+	jz Finished
+	cmp byte ptr [edi]," "
+	je EndOfWord
+	cmp byte ptr [edi],9 	; tab
+	je EndOfWord
+	mov InProgress,TRUE
+	mov al,byte ptr [edi]
+	mov byte ptr [esi],al
+	inc esi
+SkipIt:
+	inc edi
+	dec ecx
+	jmp SearchLoop
+EndOfWord:
+	cmp InProgress,TRUE
+	je WordFound
+	jmp SkipIt
+WordFound:
+	mov byte ptr [esi],0
+	push ecx
+	invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,sizeof WORDINFO
+	push esi
+	mov esi,eax
+	assume esi:ptr WORDINFO
+	invoke lstrlen,addr buffer
+	mov [esi].WordLen,eax
+	push ArrayOffset
+	pop [esi].pColor
+	inc eax
+	invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,eax
+	mov [esi].pszWord,eax
+	mov edx,eax
+	invoke lstrcpy,edx,addr buffer
+	mov eax,pArray
+	movzx edx,byte ptr [buffer]
+	shl edx,2		; multiply by 4
+	add eax,edx
+	.if dword ptr [eax]==0
+		mov dword ptr [eax],esi
+	.else
+		push dword ptr [eax]
+		pop [esi].NextLink
+		mov dword ptr [eax],esi
+	.endif
+	pop esi
+	pop ecx
+	lea esi,buffer
+	mov InProgress,FALSE
+	jmp SkipIt
+Finished:
+	.if InProgress==TRUE
+		invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,sizeof WORDINFO
+		push esi
+		mov esi,eax
+		assume esi:ptr WORDINFO
+		invoke lstrlen,addr buffer
+		mov [esi].WordLen,eax
+		push ArrayOffset
+		pop [esi].pColor
+		inc eax
+		invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,eax
+		mov [esi].pszWord,eax
+		mov edx,eax
+		invoke lstrcpy,edx,addr buffer
+		mov eax,pArray
+		movzx edx,byte ptr [buffer]
+		shl edx,2		; multiply by 4
+		add eax,edx
+		.if dword ptr [eax]==0
+			mov dword ptr [eax],esi
+		.else
+			push dword ptr [eax]
+			pop [esi].NextLink
+			mov dword ptr [eax],esi
+		.endif
+		pop esi
+	.endif
+	ret
+ParseBuffer endp
+
+FillHiliteInfo proc uses edi
+	LOCAL buffer[1024]:BYTE
+	LOCAL pTemp:DWORD
+	LOCAL BlockSize:DWORD
+	invoke RtlZeroMemory,addr ASMSyntaxArray,sizeof ASMSyntaxArray
+	invoke GetModuleFileName,hInstance,addr buffer,sizeof buffer
+	invoke lstrlen,addr buffer
+	mov ecx,eax
+	dec ecx
+	lea edi,buffer
+	add edi,ecx
+	std
+	mov al,"\"
+	repne scasb
+	cld
+	inc edi
+	mov byte ptr [edi],0
+	invoke lstrcat,addr buffer,addr WordFileName
+	invoke GetFileAttributes,addr buffer
+	.if eax!=-1
+		mov BlockSize,1024*10
+		invoke HeapAlloc,hMainHeap,0,BlockSize
+		mov pTemp,eax
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C1Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C2Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,4
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C3Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,8
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C4Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,12
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C5Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,16
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C6Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,20
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C7Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,24
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C8Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,28
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C9Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,32
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C10Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0
+			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif
+			mov edx,offset ASMColorArray
+			add edx,36
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray
+		.endif
+		invoke HeapFree,hMainHeap,0,pTemp
+	.endif
+	ret
+FillHiliteInfo endp
+
+NewRichEditProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL hdc:DWORD
+	LOCAL hOldFont:DWORD
+	LOCAL FirstChar:DWORD
+	LOCAL rect:RECT
+	LOCAL txtrange:TEXTRANGE
+	LOCAL buffer[1024*10]:BYTE
+	LOCAL hRgn:DWORD
+	LOCAL hOldRgn:DWORD
+	LOCAL RealRect:RECT
+	LOCAL pString:DWORD
+	LOCAL BufferSize:DWORD
+	LOCAL pt:POINT
+	.if uMsg==WM_PAINT
+		push edi
+		push esi
+		invoke HideCaret,hWnd
+		invoke CallWindowProc,OldWndProc,hWnd,uMsg,wParam,lParam
+		push eax
+		mov edi,offset ASMSyntaxArray
+		invoke GetDC,hWnd
+		mov hdc,eax
+		invoke SetBkMode,hdc,TRANSPARENT
+		invoke SendMessage,hWnd,EM_GETRECT,0,addr rect
+		invoke SendMessage,hWnd,EM_CHARFROMPOS,0,addr rect
+		invoke SendMessage,hWnd,EM_LINEFROMCHAR,eax,0
+		invoke SendMessage,hWnd,EM_LINEINDEX,eax,0
+		mov txtrange.chrg.cpMin,eax
+		mov FirstChar,eax
+		invoke SendMessage,hWnd,EM_CHARFROMPOS,0,addr rect.right
+		mov txtrange.chrg.cpMax,eax
+		push rect.left
+		pop RealRect.left
+		push rect.top
+		pop RealRect.top
+		push rect.right
+		pop RealRect.right
+		push rect.bottom
+		pop RealRect.bottom
+		invoke CreateRectRgn,RealRect.left,RealRect.top,RealRect.right,RealRect.bottom
+		mov hRgn,eax
+		invoke SelectObject,hdc,hRgn
+		mov hOldRgn,eax
+		invoke SetTextColor,hdc,CommentColor
+		lea eax,buffer
+		mov txtrange.lpstrText,eax
+		invoke SendMessage,hWnd,EM_GETTEXTRANGE,0,addr txtrange
+		.if eax&gt;0	
+			mov esi,eax		; esi == size of the text		
+			mov BufferSize,eax
+			push edi
+			push ebx
+			lea edi,buffer
+			mov edx,edi		; used as the reference point
+			mov ecx,esi
+			mov al,";"
+ScanMore:
+			repne scasb
+			je NextSkip
+			jmp NoMoreHit
+NextSkip:
+			dec edi
+			inc ecx
+			mov pString,edi
+			mov ebx,edi
+			sub ebx,edx
+			add ebx,FirstChar
+			mov txtrange.chrg.cpMin,ebx
+			push eax
+			mov al,0Dh
+			repne scasb
+			pop eax
+HiliteTheComment:
+			.if ecx>0
+				mov byte ptr [edi-1],0
+			.endif
+			mov ebx,edi
+			sub ebx,edx
+			add ebx,FirstChar
+			mov txtrange.chrg.cpMax,ebx
+			pushad
+			mov edi,pString
+			mov esi,txtrange.chrg.cpMax
+			sub esi,txtrange.chrg.cpMin		; esi contains the length of the buffer
+			mov eax,esi
+			push edi
+			.while eax>0
+				.if byte ptr [edi]==9
+					mov byte ptr [edi],0
+				.endif
+				inc edi
+				dec eax
+			.endw
+			pop edi
+			.while esi>0
+				.if byte ptr [edi]!=0
+					invoke lstrlen,edi
+					push eax
+					mov ecx,edi
+					lea edx,buffer
+					sub ecx,edx
+					add ecx,FirstChar
+					.if RichEditVersion==3
+						invoke SendMessage,hWnd,EM_POSFROMCHAR,addr rect,ecx
+					.else
+						invoke SendMessage,hWnd,EM_POSFROMCHAR,ecx,0
+						mov ecx,eax
+						and ecx,0FFFFh
+						mov rect.left,ecx
+						shr eax,16
+						mov rect.top,eax
+					.endif
+					invoke DrawText,hdc,edi,-1,addr rect,0
+					pop eax
+					add edi,eax
+					sub esi,eax
+				.else
+					inc edi
+					dec esi
+				.endif			
+			.endw
+			mov ecx,txtrange.chrg.cpMax
+			sub ecx,txtrange.chrg.cpMin
+			invoke RtlZeroMemory,pString,ecx
+			popad
+			.if ecx>0
+				jmp ScanMore
+			.endif
+NoMoreHit:
+			pop ebx
+			pop edi
+			mov ecx,BufferSize
+			lea esi,buffer
+			.while ecx>0
+				mov al,byte ptr [esi]
+				.if al==" " || al==0Dh || al=="/" || al=="," || al=="|" || al=="+" || al=="-" || al=="*" || al=="&" || al=="<" || al==">" || al=="=" || al=="(" || al==")" || al=="{" || al=="}" || al=="[" || al=="]" || al=="^" || al==":" || al==9
+					mov byte ptr [esi],0
+				.endif
+				dec ecx
+				inc esi
+			.endw
+			lea esi,buffer
+			mov ecx,BufferSize
+			.while ecx>0
+				mov al,byte ptr [esi]
+				.if al!=0
+					push ecx
+					invoke lstrlen,esi
+					push eax
+					mov edx,eax		; edx contains the length of the string
+					movzx eax,byte ptr [esi]
+					.if al>="A" && al<="Z"
+						sub al,"A"
+						add al,"a"
+					.endif
+					shl eax,2
+					add eax,edi		; edi contains the pointer to the WORDINFO pointer array
+					.if dword ptr [eax]!=0
+						mov eax,dword ptr [eax]
+						assume eax:ptr WORDINFO
+						.while eax!=0
+							.if edx==[eax].WordLen
+								pushad
+								invoke lstrcmpi,[eax].pszWord,esi
+								.if eax==0								
+									popad
+									mov ecx,esi
+									lea edx,buffer
+									sub ecx,edx
+									add ecx,FirstChar
+									pushad
+									.if RichEditVersion==3
+										invoke SendMessage,hWnd,EM_POSFROMCHAR,addr rect,ecx
+									.else
+										invoke SendMessage,hWnd,EM_POSFROMCHAR,ecx,0
+										mov ecx,eax
+										and ecx,0FFFFh
+										mov rect.left,ecx
+										shr eax,16
+										mov rect.top,eax
+									.endif
+									popad
+									mov edx,[eax].pColor
+									invoke SetTextColor,hdc,dword ptr [edx]								
+									invoke DrawText,hdc,esi,-1,addr rect,0
+									.break
+								.endif
+								popad
+							.endif
+							push [eax].NextLink
+							pop eax
+						.endw
+					.endif
+					pop eax
+					pop ecx
+					add esi,eax
+					sub ecx,eax
+				.else
+					inc esi
+					dec ecx
+				.endif
+			.endw
+		.endif
+		invoke SelectObject,hdc,hOldRgn
+		invoke DeleteObject,hRgn
+		invoke SelectObject,hdc,hOldFont
+		invoke ReleaseDC,hWnd,hdc
+		invoke ShowCaret,hWnd
+		pop eax
+		pop esi
+		pop edi
+		ret
+	.elseif uMsg==WM_CLOSE
+		invoke SetWindowLong,hWnd,GWL_WNDPROC,OldWndProc		
+	.else
+		invoke CallWindowProc,OldWndProc,hWnd,uMsg,wParam,lParam
+		ret
+	.endif
+NewRichEditProc endp
+
+WndProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	LOCAL ofn:OPENFILENAME
+	LOCAL buffer[256]:BYTE
+	LOCAL editstream:EDITSTREAM
+	LOCAL hFile:DWORD
+	LOCAL hPopup:DWORD
+	LOCAL pt:POINT
+	LOCAL chrg:CHARRANGE
+	.if uMsg==WM_CREATE
+		invoke CreateWindowEx,WS_EX_CLIENTEDGE,addr RichEditClass,0,WS_CHILD or WS_VISIBLE or ES_MULTILINE or WS_VSCROLL or WS_HSCROLL or ES_NOHIDESEL,\
+				CW_USEDEFAULT,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,hWnd,RichEditID,hInstance,0
+		mov hwndRichEdit,eax
+		invoke SendMessage,hwndRichEdit,EM_SETTYPOGRAPHYOPTIONS,TO_SIMPLELINEBREAK,TO_SIMPLELINEBREAK
+		invoke SendMessage,hwndRichEdit,EM_GETTYPOGRAPHYOPTIONS,1,1
+		.if eax==0		; means this message is not processed
+			mov RichEditVersion,2
+		.else
+			mov RichEditVersion,3
+			invoke SendMessage,hwndRichEdit,EM_SETEDITSTYLE,SES_EMULATESYSEDIT,SES_EMULATESYSEDIT
+		.endif
+		invoke SetWindowLong,hwndRichEdit,GWL_WNDPROC, addr NewRichEditProc
+		mov OldWndProc,eax
+		invoke SendMessage,hwndRichEdit,EM_LIMITTEXT,-1,0
+		invoke SetColor
+		invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+		invoke SendMessage,hwndRichEdit,EM_SETEVENTMASK,0,ENM_MOUSEEVENTS
+		invoke SendMessage,hwndRichEdit,EM_EMPTYUNDOBUFFER,0,0
+	.elseif uMsg==WM_NOTIFY
+		push esi
+		mov esi,lParam
+		assume esi:ptr NMHDR
+		.if [esi].code==EN_MSGFILTER
+			assume esi:ptr MSGFILTER
+			.if [esi].msg==WM_RBUTTONDOWN
+				invoke GetMenu,hWnd
+				invoke GetSubMenu,eax,1
+				mov hPopup,eax
+				invoke PrepareEditMenu,hPopup
+				mov edx,[esi].lParam
+				mov ecx,edx
+				and edx,0FFFFh
+				shr ecx,16
+				mov pt.x,edx
+				mov pt.y,ecx
+				invoke ClientToScreen,hWnd,addr pt
+				invoke TrackPopupMenu,hPopup,TPM_LEFTALIGN or TPM_BOTTOMALIGN,pt.x,pt.y,NULL,hWnd,NULL
+			.endif
+		.endif
+		pop esi
+	.elseif uMsg==WM_INITMENUPOPUP
+		mov eax,lParam
+		.if ax==0		; file menu			
+			.if FileOpened==TRUE	; a file is already opened
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_ENABLED
+			.else
+				invoke EnableMenuItem,wParam,IDM_OPEN,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_CLOSE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_SAVEAS,MF_GRAYED
+			.endif
+		.elseif ax==1	; edit menu
+			invoke PrepareEditMenu,wParam
+		.elseif ax==2		; search menu bar
+			.if FileOpened==TRUE
+				invoke EnableMenuItem,wParam,IDM_FIND,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_FINDNEXT,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_FINDPREV,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_REPLACE,MF_ENABLED
+				invoke EnableMenuItem,wParam,IDM_GOTOLINE,MF_ENABLED
+			.else
+				invoke EnableMenuItem,wParam,IDM_FIND,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_FINDNEXT,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_FINDPREV,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_REPLACE,MF_GRAYED
+				invoke EnableMenuItem,wParam,IDM_GOTOLINE,MF_GRAYED
+			.endif
+		.endif
+	.elseif uMsg==WM_COMMAND
+		.if lParam==0		; menu commands
+			mov eax,wParam
+			.if ax==IDM_OPEN
+				invoke RtlZeroMemory,addr ofn,sizeof ofn
+				mov ofn.lStructSize,sizeof ofn
+				push hWnd
+				pop ofn.hwndOwner
+				push hInstance
+				pop ofn.hInstance
+				mov ofn.lpstrFilter,offset ASMFilterString
+				mov ofn.lpstrFile,offset FileName
+				mov byte ptr [FileName],0
+				mov ofn.nMaxFile,sizeof FileName
+				mov ofn.Flags,OFN_FILEMUSTEXIST or OFN_HIDEREADONLY or OFN_PATHMUSTEXIST
+				invoke GetOpenFileName,addr ofn
+				.if eax!=0
+					invoke CreateFile,addr FileName,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0
+					.if eax!=INVALID_HANDLE_VALUE
+						mov hFile,eax
+						mov editstream.dwCookie,eax
+						mov editstream.pfnCallback,offset StreamInProc
+						invoke SendMessage,hwndRichEdit,EM_STREAMIN,SF_TEXT,addr editstream
+						invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+						invoke CloseHandle,hFile
+						mov FileOpened,TRUE
+					.else
+						invoke MessageBox,hWnd,addr OpenFileFail,addr AppName,MB_OK or MB_ICONERROR
+					.endif
+				.endif
+			.elseif ax==IDM_CLOSE
+				invoke CheckModifyState,hWnd
+				.if eax==TRUE
+					invoke SetWindowText,hwndRichEdit,0
+					mov FileOpened,FALSE
+				.endif
+			.elseif ax==IDM_SAVE
+				invoke CreateFile,addr FileName,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+				.if eax!=INVALID_HANDLE_VALUE
+@@:				
+					mov hFile,eax
+					mov editstream.dwCookie,eax
+					mov editstream.pfnCallback,offset StreamOutProc
+					invoke SendMessage,hwndRichEdit,EM_STREAMOUT,SF_TEXT,addr editstream
+					invoke SendMessage,hwndRichEdit,EM_SETMODIFY,FALSE,0
+					invoke CloseHandle,hFile
+				.else
+					invoke MessageBox,hWnd,addr OpenFileFail,addr AppName,MB_OK or MB_ICONERROR
+				.endif
+			.elseif ax==IDM_COPY
+				invoke SendMessage,hwndRichEdit,WM_COPY,0,0
+			.elseif ax==IDM_CUT
+				invoke SendMessage,hwndRichEdit,WM_CUT,0,0
+			.elseif ax==IDM_PASTE
+				invoke SendMessage,hwndRichEdit,WM_PASTE,0,0
+			.elseif ax==IDM_DELETE
+				invoke SendMessage,hwndRichEdit,EM_REPLACESEL,TRUE,0
+			.elseif ax==IDM_SELECTALL
+				mov chrg.cpMin,0
+				mov chrg.cpMax,-1
+				invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr chrg
+			.elseif ax==IDM_UNDO
+				invoke SendMessage,hwndRichEdit,EM_UNDO,0,0
+			.elseif ax==IDM_REDO
+				invoke SendMessage,hwndRichEdit,EM_REDO,0,0
+			.elseif ax==IDM_OPTION
+				invoke DialogBoxParam,hInstance,IDD_OPTIONDLG,hWnd,addr OptionProc,0
+			.elseif ax==IDM_SAVEAS
+				invoke RtlZeroMemory,addr ofn,sizeof ofn
+				mov ofn.lStructSize,sizeof ofn
+				push hWnd
+				pop ofn.hwndOwner
+				push hInstance
+				pop ofn.hInstance
+				mov ofn.lpstrFilter,offset ASMFilterString
+				mov ofn.lpstrFile,offset AlternateFileName
+				mov byte ptr [AlternateFileName],0
+				mov ofn.nMaxFile,sizeof AlternateFileName
+				mov ofn.Flags,OFN_FILEMUSTEXIST or OFN_HIDEREADONLY or OFN_PATHMUSTEXIST
+				invoke GetSaveFileName,addr ofn
+				.if eax!=0
+					invoke CreateFile,addr AlternateFileName,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+					.if eax!=INVALID_HANDLE_VALUE
+						jmp @B
+					.endif
+				.endif
+			.elseif ax==IDM_FIND
+				.if hSearch==0
+					invoke CreateDialogParam,hInstance,IDD_FINDDLG,hWnd,addr SearchProc,0
+				.endif
+			.elseif ax==IDM_REPLACE
+				.if hSearch==0
+					invoke CreateDialogParam,hInstance,IDD_REPLACEDLG,hWnd,addr ReplaceProc,0
+				.endif
+			.elseif ax==IDM_GOTOLINE
+				.if hSearch==0
+					invoke CreateDialogParam,hInstance,IDD_GOTODLG,hWnd,addr GoToProc,0
+				.endif
+			.elseif ax==IDM_FINDNEXT
+				invoke lstrlen,addr FindBuffer
+				.if eax!=0
+					invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr findtext.chrg
+					mov eax,findtext.chrg.cpMin
+					.if eax!=findtext.chrg.cpMax
+						push findtext.chrg.cpMax
+						pop findtext.chrg.cpMin
+					.endif
+					mov findtext.chrg.cpMax,-1
+					mov findtext.lpstrText,offset FindBuffer
+					invoke SendMessage,hwndRichEdit,EM_FINDTEXTEX,FR_DOWN,addr findtext
+					.if eax!=-1
+						invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr findtext.chrgText
+					.endif
+				.endif
+			.elseif ax==IDM_FINDPREV
+				invoke lstrlen,addr FindBuffer
+				.if eax!=0
+					invoke SendMessage,hwndRichEdit,EM_EXGETSEL,0,addr findtext.chrg
+					mov findtext.chrg.cpMax,0
+					mov findtext.lpstrText,offset FindBuffer
+					invoke SendMessage,hwndRichEdit,EM_FINDTEXTEX,0,addr findtext
+					.if eax!=-1
+						invoke SendMessage,hwndRichEdit,EM_EXSETSEL,0,addr findtext.chrgText
+					.endif
+				.endif
+			.elseif ax==IDM_EXIT
+				invoke SendMessage,hWnd,WM_CLOSE,0,0
+			.endif
+		.endif
+	.elseif uMsg==WM_CLOSE
+		invoke CheckModifyState,hWnd
+		.if eax==TRUE
+			invoke DestroyWindow,hWnd
+		.endif
+	.elseif uMsg==WM_SIZE
+		mov eax,lParam
+		mov edx,eax
+		and eax,0FFFFh
+		shr edx,16
+		invoke MoveWindow,hwndRichEdit,0,0,eax,edx,TRUE		
+	.elseif uMsg==WM_DESTROY
+		invoke PostQuitMessage,NULL
+	.else
+		invoke DefWindowProc,hWnd,uMsg,wParam,lParam		
+		ret
+	.endif
+	xor eax,eax
+	ret
+WndProc endp
+end start</b></font></pre>
+<h3><font face="Times New Roman, Times, serif" color="#0000CC">Analysis:</font></h3>
+<p><font face="Tahoma" size="-1">The first action before calling WinMain to to 
+  call FillHiliteInfo. This function reads the content of wordfile.txt and parses 
+  the content.</font></p>
+<pre><font face="Tahoma"><b>FillHiliteInfo proc uses edi
+	LOCAL buffer[1024]:BYTE
+	LOCAL pTemp:DWORD
+	LOCAL BlockSize:DWORD
+	invoke RtlZeroMemory,addr ASMSyntaxArray,sizeof ASMSyntaxArray</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Initialize ASMSyntaxArray to zero.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>	invoke GetModuleFileName,hInstance,addr buffer,sizeof buffer
+	invoke lstrlen,addr buffer
+	mov ecx,eax
+	dec ecx
+	lea edi,buffer
+	add edi,ecx
+	std
+	mov al,"\"
+	repne scasb
+	cld
+	inc edi
+	mov byte ptr [edi],0
+	invoke lstrcat,addr buffer,addr WordFileName</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Construct the full path name of wordfile.txt: 
+  I assume that it's always in the same folder as the program.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>	invoke GetFileAttributes,addr buffer
+	.if eax!=-1</b></font></pre>
+<p><font face="Tahoma"><font size="-1">I use this method as a quick way of checking 
+  whether a file exists.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>		mov BlockSize,1024*10
+		invoke HeapAlloc,hMainHeap,0,BlockSize
+		mov pTemp,eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Allocate the memory block to store the 
+  words. Default to 10K. The memory is allocated from the default heap.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>@@:		
+		invoke GetPrivateProfileString,addr ASMSection,addr C1Key,addr ZeroString,pTemp,BlockSize,addr buffer
+		.if eax!=0</b></font></pre>
+<p><font face="Tahoma"><font size="-1">I use <font color="#0000CC"><b>GetPrivateProfileString</b></font> 
+  to retrieve the content of each key in wordfile.txt. The key starts from C1 
+  to C10.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>			inc eax
+			.if eax==BlockSize	; the buffer is too small
+				add BlockSize,1024*10
+				invoke HeapReAlloc,hMainHeap,0,pTemp,BlockSize
+				mov pTemp,eax
+				jmp @B
+			.endif</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Checking whether the memory block is large 
+  enough. If it is not, we increment the size by 10K until the block is large 
+  enough. </font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>			mov edx,offset ASMColorArray
+			invoke ParseBuffer,hMainHeap,pTemp,eax,edx,addr ASMSyntaxArray</b></font></pre>
+<p><font face="Tahoma" size="-1">Pass the words, the memory block handle, the 
+  size of the data read from wordfile.txt, the address of the color dword that 
+  will be used to hilight the words and the address of <font color="#0000CC"><b>ASMSyntaxArray</b></font>.</font></p>
+<p><font face="Tahoma" size="-1">Now, let's examine what <font color="#0000CC"><b>ParseBuffer</b></font> 
+  does. In essence, this function accepts the buffer containing the words to be 
+  hilighted ,parses them to individual words and stores each of them in a <font color="#006666"><b>WORDINFO</b></font> 
+  structure array that can be accessed quickly from <font color="#006666"><b>ASMSyntaxArray</b></font>.</font><font face="Tahoma"><b> 
+  <br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>ParseBuffer proc uses edi esi hHeap:DWORD,pBuffer:DWORD, nSize:DWORD, ArrayOffset:DWORD,pArray:DWORD
+	LOCAL buffer[128]:BYTE
+	LOCAL InProgress:DWORD
+	mov InProgress,FALSE</b></font></pre>
+<p><font face="Tahoma"><font size="-1">InProgress is the flag I use to indicate 
+  whether the scanning process has begun. If the value is FALSE, we haven't encountered 
+  a non-white space character yet.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>	lea esi,buffer	
+	mov edi,pBuffer
+	invoke CharLower,edi</b></font></pre>
+<p><font face="Tahoma"><font size="-1">esi points to our local buffer that will 
+  contain the word we have parsed from the word list. edi points to the word list 
+  string. To simplify the search later, we convert all characters to lowercase.</font><b><br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>	mov ecx,nSize			
+SearchLoop:
+	or ecx,ecx
+	jz Finished
+	cmp byte ptr [edi]," "
+	je EndOfWord
+	cmp byte ptr [edi],9 	; tab
+	je EndOfWord</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Scan the whole word list in the buffer, 
+  looking for the white spaces. If a white space is found, we have to determine 
+  whether it marks the end or the beginning of a word.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>	mov InProgress,TRUE
+	mov al,byte ptr [edi]
+	mov byte ptr [esi],al
+	inc esi</b></font>
+<font face="Tahoma"><b>SkipIt:
+	inc edi
+	dec ecx
+	jmp SearchLoop</b></font></pre>
+<p><font face="Tahoma"><font face="Tahoma"><font size="-1">If the byte under scrutiny 
+  is not a white space, we copy it to the buffer to construct a word and then 
+  continue the scan.</font></font><b> </b></font></p>
+<pre><font face="Tahoma"><b>EndOfWord:
+	cmp InProgress,TRUE
+	je WordFound
+	jmp SkipIt</b></font></pre>
+<p><font face="Tahoma"><font size="-1">If a white space is found, we check the 
+  value in <font color="#006666"><b>InProgress</b></font>. If the value is TRUE, 
+  we can assume that the white space marks the end of a word and we may proceed 
+  to put the word currently in the local buffer (pointed to by esi) into a <font color="#006666"><b>WORDINFO</b></font> 
+  structure. If the value is FALSE, we continue the scan until a non-white space 
+  character is found. </font><b> </b></font></p>
+<pre><font face="Tahoma"><b>WordFound:
+	mov byte ptr [esi],0
+	push ecx
+	invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,sizeof WORDINFO</b></font></pre>
+<p><font face="Tahoma"><font size="-1">When the end of a word is found, we append 
+  0 to the buffer to make the word an ASCIIZ string. We then allocate a block 
+  of memory from the heap the size of <font color="#006666"><b>WORDINFO</b></font> 
+  for this word.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>	push esi
+	mov esi,eax
+	assume esi:ptr WORDINFO
+	invoke lstrlen,addr buffer
+	mov [esi].WordLen,eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">We obtain the length of the word in the 
+  local buffer and store it in the <font color="#006666"><b>WordLen</b></font> 
+  member of the <font color="#006666"><b>WORDINFO</b></font> structure, to be 
+  used as a quick comparison.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>	push ArrayOffset
+	pop [esi].pColor</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Store the address of the dword that contains 
+  the color to be used to hilight the word in <font color="#006666"><b>pColor</b></font> 
+  member.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>	inc eax
+	invoke HeapAlloc,hHeap,HEAP_ZERO_MEMORY,eax
+	mov [esi].pszWord,eax
+	mov edx,eax
+	invoke lstrcpy,edx,addr buffer</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Allocate memory from the heap to store 
+  the word itself. Right now, the <font color="#006666"><b>WORDINFO</b></font> 
+  structure is ready to be inserted into the appropriate linked list.</font><b> 
+  </b></font></p>
+<pre><font face="Tahoma"><b>	mov eax,pArray
+	movzx edx,byte ptr [buffer]
+	shl edx,2		; multiply by 4
+	add eax,edx</b></font></pre>
+<p><font face="Tahoma"><font size="-1">pArray contains the address of <font color="#006666"><b>ASMSyntaxArray</b></font>. 
+  We want to move to the dword that has the same index as the value of the first 
+  character of the word. So we put the first character of the word in edx then 
+  multiply edx by 4 (because each element in <font color="#006666"><b>ASMSyntaxArray</b></font> 
+  is 4 bytes in size) and then add the offset to the address of <font color="#006666"><b>ASMSyntaxArray</b></font>. 
+  We have the address of the corresponding dword in eax.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>	.if dword ptr [eax]==0
+		mov dword ptr [eax],esi
+	.else
+		push dword ptr [eax]
+		pop [esi].NextLink
+		mov dword ptr [eax],esi
+	.endif</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Check the value of the dword. If it's 0, 
+  it means there is currently no word that begins with this character in the list. 
+  We thus put the address of the current <font color="#006666"><b>WORDINFO</b></font> 
+  structure in that dword.</font></font></p>
+<p><font face="Tahoma"><font size="-1">If the value in the dword is not 0, it 
+  means there is at least one word that begins with this character in the array. 
+  We thus insert this <font color="#006666"><b>WORDINFO</b></font> structure to 
+  the head of the linked list and update its NextLink member to point to the next 
+  <font color="#006666"> <b>WORDINFO</b></font> structure.</font></font></p>
+<pre><font face="Tahoma"><b>	pop esi
+	pop ecx
+	lea esi,buffer
+	mov InProgress,FALSE
+	jmp SkipIt</b></font></pre>
+<p><font face="Tahoma"><font size="-1">After the operation is complete, we begin 
+  the next scan cycle until the end of buffer is reached. </font></font></p>
+<pre><font face="Tahoma"><b>		invoke SendMessage,hwndRichEdit,EM_SETTYPOGRAPHYOPTIONS,TO_SIMPLELINEBREAK,TO_SIMPLELINEBREAK
+		invoke SendMessage,hwndRichEdit,EM_GETTYPOGRAPHYOPTIONS,1,1
+		.if eax==0		; means this message is not processed
+			mov RichEditVersion,2
+		.else
+			mov RichEditVersion,3
+			invoke SendMessage,hwndRichEdit,EM_SETEDITSTYLE,SES_EMULATESYSEDIT,SES_EMULATESYSEDIT
+		.endif</b></font></pre>
+<p><font face="Tahoma" size="-1">After the richedit control is created, we need 
+  to determine the its version. This step is necessary since <font color="#006666"><b>EM_POSFROMCHAR</b></font> 
+  behaves differently for RichEdit 2.0 and 3.0 and <font color="#006666"><b>EM_POSFROMCHAR</b></font> 
+  is crucial to our syntax hilighting routine. I have never seen a documented 
+  way of checking the version of richedit control thus I have to use a workaround. 
+  In this case, I set an option that is specific to version 3.0 and immediately 
+  retrieve its value. If I can retrieve the value, I assume that the control version 
+  is 3.0.</font></p>
+<p><font face="Tahoma" size="-1">If you use RichEdit control version 3.0, you 
+  will notice that updating the font color for a large file takes quite a long 
+  time. This problem seems to be specific to version 3.0. I found a workaround: 
+  making the control emulate the behavior of the system edit control by sending 
+  <font color="#006666"> <b>EM_SETEDITSTYLE</b></font> message.</font></p>
+<p><font face="Tahoma" size="-1">After we can obtain the version information, 
+  we proceed to subclass the richedit control. We will now examine the new window 
+  procedure for the richedit control.</font></p>
+<pre><font face="Tahoma"><b>NewRichEditProc proc hWnd:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
+	........
+	.......
+	.if uMsg==WM_PAINT
+		push edi
+		push esi
+		invoke HideCaret,hWnd
+		invoke CallWindowProc,OldWndProc,hWnd,uMsg,wParam,lParam
+		push eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">We handle <font color="#006666"><b>WM_PAINT</b></font> 
+  message. First, we hide the caret so as to avoid some ugly gfx after the hilighting. 
+  After that we pass the message to the original richedit procedure to let it 
+  update the window. When <font color="#006666"><b>CallWindowProc</b></font> returns, 
+  the text is updated with its usual color/background. Now is our opportunity 
+  to do syntax hilighting.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>		mov edi,offset ASMSyntaxArray
+		invoke GetDC,hWnd
+		mov hdc,eax
+		invoke SetBkMode,hdc,TRANSPARENT</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Store the address of ASMSyntaxArray in 
+  edi. Then we obtain the handle to the device context and set the text background 
+  mode to transparent so the text that we will write will use the default background 
+  color. </font><b> <br>
+  </b></font></p>
+<pre><font face="Tahoma"><b>		invoke SendMessage,hWnd,EM_GETRECT,0,addr rect
+		invoke SendMessage,hWnd,EM_CHARFROMPOS,0,addr rect
+		invoke SendMessage,hWnd,EM_LINEFROMCHAR,eax,0
+		invoke SendMessage,hWnd,EM_LINEINDEX,eax,0</b></font></pre>
+<p><font face="Tahoma"><font size="-1">We want to obtain the visible text so we 
+  first have to obtain the formatting rectangle by sending <font color="#006666"><b>EM_GETRECT</b></font> 
+  message to the richedit control. Now that we have the bounding rectangle, we 
+  obtain the nearest character index to the upper left corner of the rectangle 
+  with <font color="#006666"><b>EM_CHARFROMPOS</b></font>. Once we have the character 
+  index (the first visible character in the control), we can start to do syntax 
+  hilighting starting from that position. But the effect might not be as good 
+  as when we start from the first character of the line that the character is 
+  in. That's why I need to obtain the line number of that the first visible character 
+  is in by sending <font color="#006666"><b>EM_LINEFROMCHAR</b></font> message. 
+  To obtain the first character of that line, I send <font color="#006666"><b>EM_LINEINDEX</b></font> 
+  message.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>		mov txtrange.chrg.cpMin,eax
+		mov FirstChar,eax
+		invoke SendMessage,hWnd,EM_CHARFROMPOS,0,addr rect.right
+		mov txtrange.chrg.cpMax,eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Once we have the first character index, 
+  store it for future reference in FirstChar variable. Next we obtain the last 
+  visible character index by sending <font color="#006666"><b>EM_CHARFROMPOS</b></font>, 
+  passing the lower-right corner of the formatting rectangle in <font color="#0000CC"><b>lParam</b></font>.</font><b> 
+  </b></font></p>
+<pre><font face="Tahoma"><b>		push rect.left
+		pop RealRect.left
+		push rect.top
+		pop RealRect.top
+		push rect.right
+		pop RealRect.right
+		push rect.bottom
+		pop RealRect.bottom
+		invoke CreateRectRgn,RealRect.left,RealRect.top,RealRect.right,RealRect.bottom
+		mov hRgn,eax
+		invoke SelectObject,hdc,hRgn
+		mov hOldRgn,eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">While doing syntax hilighting, I noticed 
+  an unsightly side-effect of this method: if the richedit control has a margin 
+  (you can specify margin by sending <font color="#006666"><b>EM_SETMARGINS</b></font> 
+  message to the richedit control), <font color="#006666"><b>DrawText</b></font> 
+  writes over the margin. Thus I need to create a clipping region, the size of 
+  the formatting rectangle, by calling <font color="#006666"><b>CreateRectRgn</b></font>. 
+  The output of GDI functions will be clipped to the &quot;writable&quot; area.</font></font></p>
+<p><font face="Tahoma" size="-1">Next, we need to hilight the comments first and 
+  get them out of our way. My method is to search for &quot;;&quot; and hilight 
+  the text with the comment color until the carriage return is found. I will not 
+  analyze the routine here: it's fairly long and complicated. Suffice here to 
+  say that, when all the comments are hilighted, we replace them with 0s in the 
+  buffer so that the words in the comments will not be processed/hilighted later.</font></p>
+<pre><font face="Tahoma"><b>		mov ecx,BufferSize
+		lea esi,buffer
+		.while ecx>0
+			mov al,byte ptr [esi]
+			.if al==" " || al==0Dh || al=="/" || al=="," || al=="|" || al=="+" || al=="-" || al=="*" || al=="&" || al=="<" || al==">" || al=="=" || al=="(" || al==")" || al=="{" || al=="}" || al=="[" || al=="]" || al=="^" || al==":" || al==9
+				mov byte ptr [esi],0
+			.endif
+			dec ecx
+			inc esi
+		.endw</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Once the comments are out of our way, we 
+  separate the words in the buffer by replacing the &quot;separator&quot; characters 
+  with 0s. With this method, we need not concern about the separator characters 
+  while processing the words in the buffer anymore: there is only one separator 
+  character, NULL.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>		lea esi,buffer
+		mov ecx,BufferSize
+		.while ecx>0
+			mov al,byte ptr [esi]
+			.if al!=0</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Search the buffer for the first character 
+  that is not null,ie, the first character of a word.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>				push ecx
+				invoke lstrlen,esi
+				push eax
+				mov edx,eax</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Obtain the length of the word and put it 
+  in edx </font><b> </b></font></p>
+<pre><font face="Tahoma"><b>				movzx eax,byte ptr [esi]
+				.if al>="A" && al<="Z"
+					sub al,"A"
+					add al,"a"
+				.endif</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Convert the character to lowercase (if 
+  it's an uppercase character)</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>				shl eax,2
+				add eax,edi		; edi contains the pointer to the WORDINFO pointer array
+				.if dword ptr [eax]!=0</b></font></pre>
+<p><font face="Tahoma"><font size="-1">After that, we skip to the corresponding 
+  dword in ASMSyntaxArray and check whether the value in that dword is 0. If it 
+  is, we can skip to the next word.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>					mov eax,dword ptr [eax]
+					assume eax:ptr WORDINFO
+					.while eax!=0
+						.if edx==[eax].WordLen</b></font></pre>
+<p><font face="Tahoma"><font size="-1">If the value in the dword is non-zero, 
+  it points to the linked list of <font color="#006666"><b>WORDINFO</b></font> 
+  structures. We process to walk the linked list, comparing the length of the 
+  word in our local buffer with the length of the word in the <font color="#006666"><b>WORDINFO</b></font> 
+  structure. This is a quick test before we compare the words. Should save some 
+  clock cycles.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>							pushad
+							invoke lstrcmpi,[eax].pszWord,esi
+							.if eax==0</b></font></pre>
+<p><font face="Tahoma"><font size="-1">If the lengths of both words are equal, 
+  we proceed to compare them with <font color="#006666"><b>lstrcmpi</b></font>.</font><b> 
+  </b></font></p>
+<pre><font face="Tahoma"><b>								popad
+								mov ecx,esi
+								lea edx,buffer
+								sub ecx,edx
+								add ecx,FirstChar</b></font></pre>
+<p><font face="Tahoma"><font size="-1">We construct the character index from the 
+  address of the first character of the matching word in the buffer. We first 
+  obtain its relative offset from the starting address of the buffer then add 
+  the character index of the first visible character to it.</font><b> </b></font></p>
+<pre><font face="Tahoma"><b>								pushad
+								.if RichEditVersion==3
+									invoke SendMessage,hWnd,EM_POSFROMCHAR,addr rect,ecx
+								.else
+									invoke SendMessage,hWnd,EM_POSFROMCHAR,ecx,0
+									mov ecx,eax
+									and ecx,0FFFFh
+									mov rect.left,ecx
+									shr eax,16
+									mov rect.top,eax
+								.endif
+								popad</b></font></pre>
+<p><font face="Tahoma"><font size="-1">Once we know the character index of the 
+  first character of the word to be hilighted, we proceed to obtain the coordinate 
+  of it by sending <font color="#006666"><b>EM_POSFROMCHAR</b></font> message. 
+  However, this message is interpreted differently by richedit 2.0 and 3.0. For 
+  richedit 2.0, <font color="#0000CC"><b>wParam</b></font> contains the character 
+  index and <font color="#0000CC"><b>lParam</b></font> is not used. It returns 
+  the coordinate in eax. For richedit 3.0, <font color="#0000CC"><b>wParam</b></font> 
+  is the pointer to a <font color="#006666"><b>POINT</b></font> structure that 
+  will be filled with the coordinate and <font color="#0000CC"><b>lParam</b></font> 
+  contains the character index. </font></font></p>
+<p><font face="Tahoma"><font size="-1">As you can see, passing the wrong arguments 
+  to <font color="#006666"><b>EM_POSFROMCHAR</b></font> can wreak havoc to your 
+  system. That's why I have to differentiate between RichEdit control versions.</font><b> 
+  </b></font></p>
+<pre><font face="Tahoma"><b>								mov edx,[eax].pColor
+								invoke SetTextColor,hdc,dword ptr [edx]								
+								invoke DrawText,hdc,esi,-1,addr rect,0</b></font></pre>
+<p><font face="Tahoma" size="-1">Once we got the coordinate to start, we set the 
+  text color with the one specified in the <font color="#006666"><b>WORDINFO</b></font> 
+  structure. And then proceed to overwrite the word with the new color.</font></p>
+<p><font face="Tahoma" size="-1">As the final words, this method can be improved 
+  in several ways. For example, I obtain all the text starting from the first 
+  to the last visible line. If the lines are very long, the performance may hurt 
+  by processing the words that are not visible. You can optimize this by obtaining 
+  the really visible text line by line. Also the searching algorithm can be improved 
+  by using a more efficient method. Don't take me wrong: the syntax hilighting 
+  method used in this example is FAST but it can be FASTER. :)</font></p>
+<hr>
+<p align="center"><font face="Tahoma" size="-1"><b>[<a href="http://win32asm.cjb.net">Iczelion's 
+  Win32 Assembly Homepage</a>]</b></font></p>
+<p>&nbsp;</p>
+<p><font face="Tahoma"><b><br>
+  </b></font></p>
+<pre>&nbsp;</pre>
+</body>
+</html>

@@ -1,0 +1,3 @@
+%define STR "i am aman"
+
+we can use define and assign command after one circle of data exe complete

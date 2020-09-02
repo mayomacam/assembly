@@ -1,0 +1,691 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.7 [en] (Win98; I) [Netscape]">
+   <title>Iczelion's Win32asm Tutorial 27: Tooltip Control</title>
+</head>
+<body text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+
+<center>
+<h1>
+<font face="Tahoma"><font color="#FFFFCC">Tutorial 27: Tooltip Control</font></font></h1></center>
+<font face="Tahoma">We will learn about the tooltip control: What it is
+and how to create and use it. Download <a href="../../files/tut27.zip">the
+example</a>.</font>
+<h3>
+<font face="Tahoma">Theory:</font></h3>
+<font face="Tahoma">A tooltip is a small rectangular window that is displayed
+when the mouse pointer hovers over some specific area. A tooltip window
+contains some text that the programmer wants to be displayed. In this regard,
+a tooltip servers the same role as the status window but it disappears
+when the user clicks or moves the mouse pointer away from the designated
+area. You'll probably be familiar with the tooltips that are associated
+with toolbar buttons. Those "tooltips" are conveniencies provided by the
+toolbar control. If you want tooltips for other windows/controls, you need
+to create your own tooltip control.</font>
+<br><font face="Tahoma">Now that you know what a tooltip is, let's go on
+to how we can create and use it. The steps are outlined below:</font>
+<ol>
+<li>
+<font face="Tahoma">Create a tooltip control with CreateWindowEx</font></li>
+
+<li>
+<font face="Tahoma">Define a region that the tooltip control will monitor
+for mouse pointer movement.</font></li>
+
+<li>
+<font face="Tahoma">Submit the region to the tooltip control</font></li>
+
+<li>
+<font face="Tahoma">Relay mouse messages of the submitted region to the
+tooltip control (this step may occur earlier, depending on the method used
+to relay the messages)</font></li>
+</ol>
+<font face="Tahoma">We wll next examine each step in detail.</font>
+<h4>
+<font face="Tahoma">Tooltip Creation</font></h4>
+<font face="Tahoma">A tooltip control is a common control. As such, you
+need to call <b><font color="#FFFFCC">InitCommonControls</font></b> somewhere
+in your source code so that MASM implicitly links your program to comctl32.dll.
+You create a tooltip control with CreateWindowEx. The typical scenario
+would be like this:</font>
+<blockquote><b><font face="Tahoma"><font color="#99FF99">.data</font></font></b>
+<br><b><font face="Tahoma"><font color="#99FF99">TooltipClassName db "Tooltips_class32",0</font></font></b>
+<br><b><font face="Tahoma"><font color="#99FF99">.code</font></font></b>
+<br><b><font face="Tahoma"><font color="#99FF99">.....</font></font></b>
+<br><b><font face="Tahoma"><font color="#99FF99">invoke InitCommonControls</font></font></b>
+<br><b><font face="Tahoma"><font color="#99FF99">invoke CreateWindowEx,
+NULL, addr TooltipClassName, NULL, TIS_ALWAYSTIP, CW_USEDEFAULT, CW_USEDEFAULT,
+CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL</font></font></b></blockquote>
+<font face="Tahoma">Note the window style: <b><font color="#FFFFCC">TIS_ALWAYSTIP</font></b>.
+This style specifies that the tooltip will be shown when the mouse pointer
+is over the designated area regardless of the status of the window that
+contains the area. Put simply, if you use this flag, when the mouse pointer
+hovers over the area you register to the tooltip control, the tooltip window
+will appear even if the window under the mouse pointer is inactive.</font>
+<br><font face="Tahoma">You don't have to include <b><font color="#FFFFCC">WS_POPUP</font></b>
+and <b><font color="#FFFFCC">WS_EX_TOOLWINDOW</font></b> styles in CreateWindowEx
+because the tooltip control's window procedure adds them automatically.
+You also don't need to specify the coordinate, the height and width of
+the tooltip window: the tooltip control will adjust them automatically
+to fit the tooltip text that will be displayed, thus we supply <b><font color="#FFFFCC">CW_USEDEFAULT</font></b>
+in all four parameters. The remaining parameters are not remarkable.</font>
+<h4>
+<font face="Tahoma">Specifying the tool</font></h4>
+<font face="Tahoma">The tooltip control is created but it's not shown immediately.
+We want the tooltip window to show up when the mouse pointer hovers over
+some area. Now is the time to specify that area. We call such area "<b><font color="#FFFFCC">tool</font></b>".
+A tool is a rectangular area on the client area of a window which the tooltip
+control will monitor for mouse pointer. If the mouse pointer hovers over
+the tool, the tooltip window will appear. The rectangular area can cover
+the whole client area or only a part of it. So we can divided tool into
+two types: one that is implemented as a window and another that is implemented
+as a rectangular area in the client area of some window. Both has their
+uses. The tool that covers the whole client area of a window is most frequently
+used with controls such as buttons, edit controls and so on. You don't
+need to specify the coordinate and the dimensions of the tool: it's assumed
+to be the whole client area of the window. The tool that is implemented
+as a rectangular area on the client area is useful when you want to divide
+the client area of a window into several regions without using child windows.
+With this type of tool, you need to specify the coordinate of the upper
+left corner and the width and height of the tool.</font>
+<br><font face="Tahoma">You specify the tool with the<b><font color="#99FF99">
+TOOLINFO</font></b> structure which has the following definition:</font>
+<blockquote><b><tt><font color="#99FF99">TOOLINFO STRUCT</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; cbSize&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; uFlags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; hWnd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; uId&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; rect&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+RECT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;></font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; hInst&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; lpszText&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">&nbsp; lParam&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+LPARAM&nbsp;&nbsp;&nbsp;&nbsp; ?</font></tt></b>
+<br><b><tt><font color="#99FF99">TOOLINFO ENDS</font></tt></b></blockquote>
+
+<center><table BORDER >
+<tr ALIGN=CENTER BGCOLOR="#666600">
+<td>Field Name</td>
+
+<td>Explanation</td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">cbSize</font></td>
+
+<td><font face="Tahoma">The size of the TOOLINFO structure. You <b><font color="#FFFFCC">MUST</font></b>
+fill this member. Windows will not flag error if this field is not filled
+properly but you will receive strange, unpredictable results.</font></td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">uFlags</font></td>
+
+<td><font face="Tahoma">The bit flags that specifies the characteristics
+of the tool. This value can be a combination of the following flags:</font>
+<ul>
+<li>
+<font face="Tahoma"><b><font color="#66FF99">TTF_IDISHWND</font></b>&nbsp;
+"ID is hWnd". If you specify this flag, it means you want to use a tool
+that covers the whole client area of a window (the first type of tool above).
+If you use this flag, you <b><font color="#FFFF99">must</font></b> fill
+the <b><font color="#FFFF99">uId
+</font></b>member of this structure with
+the handle of the window you want to use. If you don't specify this flag,
+it means you want to use the second type of tool, the one that is implemented
+as the rectangular area on the client window. In that case, you need to
+fill the <b><font color="#FFFF99">rect
+</font></b>member with the dimension
+of the rectangle.</font></li>
+
+<li>
+<font face="Tahoma"><b><font color="#66FF99">TTF_CENTERTIP&nbsp; </font></b>Normally
+the tooltip window will appear to the right and below the mouse pointer.
+If you specify this flag, the tooltip window will always appear directly
+below the tool and is centered regardless of the position of the mouse
+pointer.</font></li>
+
+<li>
+<font face="Tahoma"><b><font color="#99FF99">TTF_RTLREADING</font></b>&nbsp;
+You can forget about this flag if your program is not designed specifically
+for Arabic or Hebrew systems. This flag displays the tooltip text with
+right-to-left reading order. Doesn't work under other systems.</font></li>
+
+<li>
+<font face="Tahoma"><b><font color="#66FF99">TTF_SUBCLASS</font></b>&nbsp;
+If you use this flag, it means you tell the tooltip control to subclass
+the window that the tool is on so that the tooltip control can intercept
+mouse messages that are sent to the window. This flag is very handy. If
+you don't use this flag, you have to do more work to relay the mouse messages
+to the tooltip control.</font></li>
+</ul>
+</td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">hWnd</font></td>
+
+<td><font face="Tahoma">Handle to the window that contains the tool. If
+you specify<b><font color="#66FF99"> TTF_IDISHWND</font></b> flag, this
+field is ignored since Windows will use the value in <b><font color="#FFFF99">uId</font></b>
+member as the window handle. You need to fill this field if:</font>
+<ul>
+<li>
+<font face="Tahoma">You don't use <b><font color="#66FF99">TTF_IDISHWND</font></b>
+flag (in other words, you use a rectangular tool)</font></li>
+
+<li>
+<font face="Tahoma">You specify the value <b><font color="#66FF99">LPSTR_TEXTCALLBACK</font></b>
+in <b><font color="#FFFF99">lpszText</font></b> member. This value tells
+the tooltip control that, when it needs to display the tooltip window,
+it must ask the window that contains the tool for the text to be displayed.
+This is a kind of dynamic realtime tooltip text update. If you want to
+change your tooltip text dynamically, you should specify <b><font color="#66FF99">LPSTR_TEXTCALLBACK</font></b>
+value in <b><font color="#FFFF99">lpszText</font></b> member. The tooltip
+control will send <b><font color="#66FF99">TTN_NEEDTEXT</font></b> notification
+message to the window identified by the handle in <b><font color="#FFFF99">hWnd</font></b>
+field.</font></li>
+</ul>
+</td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">uId</font></td>
+
+<td><font face="Tahoma">The value in this field can have two meanings,
+depending on whether the <b><font color="#FFFF99">uFlags</font></b> member
+contains the flag
+<b><font color="#66FF99">TTF_IDISHWND</font></b>.</font>
+<ul>
+<li>
+<font face="Tahoma">Application-defined tool ID if the <b><font color="#66FF99">TTF_IDISHWND
+</font></b>flag
+is not specified. Since this means you use a tool which covers only a part
+of the client area, it's logical that you can have many such tools on the
+same client area (without overlap). The tooltip control needs a way to
+differentiate between them. In this case, the window handle in hWnd member
+is not enough since all tools are on the same window. The application-defined
+IDs are thus necessary. The IDs can be any value so long as they are unique
+among themselves.</font></li>
+
+<li>
+<font face="Tahoma">The handle to the window whose whole client area is
+used as the tool if the <b><font color="#66FF99">TTF_IDISHWND</font></b>
+flag is specified. You may wonder why this field is used to store the window
+handle instead of the <b><font color="#FFFF99">hWnd</font></b> field above.
+The answer is: the hWnd member may already be filled if the value <b><font color="#66FF99">LPSTR_TEXTCALLBACK</font></b>
+is specified in the <b><font color="#FFFF99">lpszText</font></b> member
+and the window that is responsible for supplying the tooltip text and the
+window that contains the tool may <b><font color="#FFFF99">NOT</font></b>
+be the same ( You can design your program so that a single window can serve
+both roles but this is too restrictive. In this case, Microsoft gives you
+more freedom. Cheers.)</font></li>
+</ul>
+</td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">rect</font></td>
+
+<td><font face="Tahoma">A <b><font color="#66FF99">RECT</font></b> structure
+that specifies the dimension of the tool. This structure defines a rectangle
+relative to the upper left corner of the client area of the window specified
+by the <b><font color="#FFFF99">hWnd </font></b>member. In short, you must
+fill this structure if you want to specify a tool that covers only a part
+of the client area. The tooltip control will ignore this field if you specify
+<b><font color="#66FF99">TTF_IDISHWND</font></b>
+flag (you choose to use a tool that covers the whole client area)</font></td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">hInst</font></td>
+
+<td><font face="Tahoma">The handle of the instance that contains the string
+resource that will be used as the tooltip text if the value in the <b><font color="#FFFF99">lpszText</font></b>
+member specifies the string resource identifier. This may sound confusing.
+Read the explanation of the <b><font color="#FFFF99">lpszText</font></b>
+member first and you will understand what this field is used for. The tooltip
+control ignores this field if the <b><font color="#FFFF99">lpszText </font></b>field
+doesn't contain a string resource identifier.</font></td>
+</tr>
+
+<tr>
+<td><font face="Tahoma">lpszText</font></td>
+
+<td><font face="Tahoma">This field can have several values:</font>
+<ul>
+<li>
+<font face="Tahoma">If you specify the value <b><font color="#66FF99">LPSTR_TEXTCALLBACK
+</font></b>in this field, the tooltip control will send <b><font color="#66FF99">TTN_NEEDTEXT</font></b>
+notification message to the window identified by the handle in <b><font color="#FFFF99">hWnd</font></b>
+field for the text string to be displayed in the tooltip window. This is
+the most dynamic method of tooltip text update: you can change the tooltip
+text each time the tooltip window is displayed.</font></li>
+
+<li>
+<font face="Tahoma">If you specify a string resource identifier in this
+field, when the tooltip control needs to display the tooltip text in the
+tooltip window, it searches for the string in the string table of the instance
+specified by <b><font color="#FFFF99">hInst</font></b> member. The tooltip
+control identifies a string resource identifier by checking the high word
+of this field. Since a string resource identifier is a 16-bit value, the
+high word of this field will always be zero. This method is useful if you
+plan to port your program to other languages. Since the string resource
+is defined in a resource script, you don't need to modify the source code.You
+only have to modify the string table and the tooltip texts will change
+without the risk of introducing bugs into your program.</font></li>
+
+<li>
+<font face="Tahoma">If the value in this field is not <b><font color="#66FF99">LPSTR_TEXTCALLBACK</font></b>
+and the high word is not zero, the tooltip control interprets the value
+as the pointer to a text string that will be used as the tooltip text.
+This method is the easiest to use but the least flexible.</font></li>
+</ul>
+</td>
+</tr>
+</table></center>
+
+<p><font face="Tahoma">To recapitulate, you need to fill the <b><font color="#66FF99">TOOLINFO</font></b>
+structure prior to submitting it to the tooltip control. This structure
+describes the characteristics of the tool you desire.</font>
+<h4>
+<font face="Tahoma">Register the tool with the tooltip control</font></h4>
+<font face="Tahoma">After you fill the <b><font color="#66FF99">TOOLINFO</font></b>
+structure, you must submit it to tooltip control. A tooltip control can
+service many tools so it is usually unnecessary to create more than one
+tooltip control for a window. To register a tool with a tooltip control,
+you send the <b><font color="#FFFF99">TTM_ADDTOOL</font></b> message to
+the tooltip control. The <b><font color="#66FF99">wParam</font></b> is
+not used and the<b><font color="#66FF99"> lParam</font></b> must contain
+the address of the <b><font color="#66FF99">TOOLINFO</font></b> structure
+you want to register.</font>
+<blockquote><font face="Tahoma">.data?</font>
+<br><font face="Tahoma">ti TOOLINFO &lt;></font>
+<br><font face="Tahoma">.......</font>
+<br><font face="Tahoma">.code</font>
+<br><font face="Tahoma">.......</font>
+<br><font face="Tahoma">&lt;fill the TOOLINFO structure></font>
+<br><font face="Tahoma">.......</font>
+<br><font face="Tahoma">invoke SendMessage, hwndTooltip, TTM_ADDTOOL, NULL,
+addr ti</font></blockquote>
+<font face="Tahoma"><b><font color="#FFFF99">SendMessage</font></b> for
+this message will return <b><font color="#FFCC33">TRUE</font></b> if the
+tool is successfully registered with the tooltip control, <b><font color="#FFCC33">FALSE</font></b>
+otherwise.</font>
+<br><font face="Tahoma">You can unregister the tool by sending <b><font color="#FFFF99">TTM_DELTOOL</font></b>
+message to the tooltip control.</font>
+<h4>
+<font face="Tahoma">Relaying Mouse Messages to the Tooltip Control</font></h4>
+<font face="Tahoma">When the above step is completed, the tooltip control
+knows which area it should monitor for mouse messages and what text it
+should display in the tooltip window. The only thing it lacks is the *trigger*
+for that action. Think about it: the area specified by the tool is on the
+client area of the other window. How can the tooltip control intercept
+the mouse messages destined for that window? It needs to do so in order
+that it can measure the amount of time the mouse pointer hovers over a
+point in the tool so that when the specified amount of time elapses, the
+tooltip control shows the tooltip window. There are two methods of accomplishing
+this goal, one that requires the cooperation of the window that contains
+the tool and the other without the cooperation on the part of the window.</font>
+<ul>
+<li>
+<font face="Tahoma">The window that contains the tool must relay the mouse
+messages to the tooltip control by sending <b><font color="#FFFF99">TTM_RELAYEVENT</font></b>
+messages to the control. The <b><font color="#FFFF99">lParam</font></b>
+of this message must contain the address of a <b><font color="#66FF99">MSG</font></b>
+structure that specifies the message to be relayed to the tooltip control.
+A tooltip control processes only the following mouse messages:</font></li>
+
+<ul>
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_LBUTTONDOWN</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_MOUSEMOVE</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_LBUTTONUP</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_RBUTTONDOWN</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_MBUTTONDOWN</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_RBUTTONUP</font></font></b></li>
+
+<li>
+<b><font face="Tahoma"><font color="#FFCC33">WM_MBUTTONUP</font></font></b></li>
+</ul>
+<font face="Tahoma">All other messages are ignored. Thus in the window
+procedure of the window that contains the tool, there must be a switch
+that does something like this:</font><font face="Tahoma"></font>
+<p><b><font face="Tahoma"><font color="#66FF99">WndProc proc hWnd:DWORD,
+uMsg:DWORD, wParam:DWORD, lParam:DWORD</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">.......</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">&nbsp;&nbsp;&nbsp;</font><font color="#FFCC33">
+if</font><font color="#66FF99"> </font><font color="#FF99FF">uMsg==WM_CREATE</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.............</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">&nbsp;&nbsp;&nbsp; </font><font color="#FFCC33">elseif</font><font color="#66FF99">
+</font><font color="#FF99FF">uMsg==WM_LBUTTONDOWN || uMsg==WM_MOUSEMOVE
+|| uMsg==WM_LBUTTONUP || uMsg==WM_RBUTTONDOWN || uMsg==WM_MBUTTONDOWN ||
+uMsg==WM_RBUTTONUP || uMsg==WM_MBUTTONUP</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage, hwndTooltip, TTM_RELAYEVENT, NULL, addr msg</font></font></b>
+<br><b><font face="Tahoma"><font color="#66FF99">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+..........</font></font></b>
+<li>
+<font face="Tahoma">You can specify <b><font color="#66FF99">TTF_SUBCLASS</font></b>
+flag in the<b><font color="#FFFF99"> uFlags</font></b> member of the <b><font color="#66FF99">TOOLINFO</font></b>
+structure. This flag tells the tooltip control to subclass the window that
+contains the tool so it can intercept the mouse messages without the cooperation
+of the window. This method is easier to use since it doesn't require more
+coding than specifying <b><font color="#66FF99">TTF_SUBCLASS</font></b>
+flag and the tooltip control handles all the message interception itself.</font></li>
+</ul>
+<font face="Tahoma">That's it. At this step, your tooltip control is fully
+functional. There are several useful tooltip-related messages you should
+know about.</font>
+<ul>
+<li>
+<font face="Tahoma"><b><font color="#FFFF99">TTM_ACTIVATE.</font></b>&nbsp;
+If you want to disable/enable the tooltip control dynamically, this message
+is for you. If the wParam value is <b><font color="#FFCC33">TRUE</font></b>,
+the tooltip control is enabled. If the wParam value is <b><font color="#FFCC33">FALSE</font></b>,
+the tooltip control is disabled. A tooltip control is enabled when it first
+created so you don't need to send this message to activate it.</font></li>
+
+<li>
+<font face="Tahoma"><b><font color="#FFFF99">TTM_GETTOOLINFO </font></b>and
+<b><font color="#FFFF99">TTM_SETTOOLINFO</font></b>. If you want to obtain/change
+the values in the TOOLINFO structure after it was submitted to the tooltip
+control, use these messages. You need to specify the tool you need to change
+with the correct uId and hWnd values. If you only want to change the rect
+member, use <b><font color="#FFFF99">TTM_NEWTOOLRECT</font></b> message.
+If you only want to change the tooltip text, use <b><font color="#FFFF99">TTM_UPDATETIPTEXT</font></b>.</font></li>
+
+<li>
+<font face="Tahoma"><b><font color="#FFFF99">TTM_SETDELAYTIME</font></b>.
+With this message, you can specify the time delay the tooltip control uses
+when it's displaying the tooltip text and much more.</font></li>
+</ul>
+
+<h3>
+<font face="Tahoma">Example:</font></h3>
+<font face="Tahoma">The following example is a simple dialog box with two
+buttons. The client area of the dialog box is divided into 4 areas: upper
+left, upper right, lower left and lower right. Each area is specified as
+a tool with its own tooltip text. The two buttons also has their own tooltip
+texts.</font>
+<blockquote><b><tt>.386</tt></b>
+<br><b><tt>.model flat,stdcall</tt></b>
+<br><b><tt>option casemap:none</tt></b>
+<br><b><tt>include \masm32\include\windows.inc</tt></b>
+<br><b><tt>include \masm32\include\kernel32.inc</tt></b>
+<br><b><tt>include \masm32\include\user32.inc</tt></b>
+<br><b><tt>include \masm32\include\comctl32.inc</tt></b>
+<br><b><tt>includelib \masm32\lib\comctl32.lib</tt></b>
+<br><b><tt>includelib \masm32\lib\user32.lib</tt></b>
+<br><b><tt>includelib \masm32\lib\kernel32.lib</tt></b>
+<br><b><tt>DlgProc proto :DWORD,:DWORD,:DWORD,:DWORD</tt></b>
+<br><b><tt>EnumChild proto :DWORD,:DWORD</tt></b>
+<br><b><tt>SetDlgToolArea proto :DWORD,:DWORD,:DWORD,:DWORD,:DWORD</tt></b>
+<br><b><tt>.const</tt></b>
+<br><b><tt>IDD_MAINDIALOG equ 101</tt></b>
+<br><b><tt>.data</tt></b>
+<br><b><tt>ToolTipsClassName db "Tooltips_class32",0</tt></b>
+<br><b><tt>MainDialogText1 db "This is the upper left area of the dialog",0</tt></b>
+<br><b><tt>MainDialogText2 db "This is the upper right area of the dialog",0</tt></b>
+<br><b><tt>MainDialogText3 db "This is the lower left area of the dialog",0</tt></b>
+<br><b><tt>MainDialogText4 db "This is the lower right area of the dialog",0</tt></b>
+<br><b><tt>.data?</tt></b>
+<br><b><tt>hwndTool dd ?</tt></b>
+<br><b><tt>hInstance dd ?</tt></b>
+<br><b><tt>.code</tt></b>
+<br><b><tt>start:</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke GetModuleHandle,NULL</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov hInstance,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke DialogBoxParam,hInstance,IDD_MAINDIALOG,NULL,addr
+DlgProc,NULL</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke ExitProcess,eax</tt></b><b><tt></tt></b>
+<p><b><tt>DlgProc proc hDlg:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; LOCAL ti:TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; LOCAL id:DWORD</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; LOCAL rect:RECT</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .if uMsg==WM_INITDIALOG</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke InitCommonControls</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke CreateWindowEx,NULL,ADDR
+ToolTipsClassName,NULL,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+TTS_ALWAYSTIP,CW_USEDEFAULT,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov hwndTool,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov id,0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov ti.cbSize,sizeof
+TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov ti.uFlags,TTF_SUBCLASS</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push hDlg</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop ti.hWnd</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke GetWindowRect,hDlg,addr
+rect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetDlgToolArea,hDlg,addr
+ti,addr MainDialogText1,id,addr rect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc id</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetDlgToolArea,hDlg,addr
+ti,addr MainDialogText2,id,addr rect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc id</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetDlgToolArea,hDlg,addr
+ti,addr MainDialogText3,id,addr rect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc id</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetDlgToolArea,hDlg,addr
+ti,addr MainDialogText4,id,addr rect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke EnumChildWindows,hDlg,addr
+EnumChild,addr ti</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .elseif uMsg==WM_CLOSE</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke EndDialog,hDlg,NULL</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .else</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,FALSE</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ret</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .endif</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov eax,TRUE</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; ret</tt></b>
+<br><b><tt>DlgProc endp</tt></b><b><tt></tt></b>
+<p><b><tt>EnumChild proc uses edi hwndChild:DWORD,lParam:DWORD</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; LOCAL buffer[256]:BYTE</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov edi,lParam</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:ptr TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; push hwndChild</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; pop [edi].uId</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; or [edi].uFlags,TTF_IDISHWND</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke GetWindowText,hwndChild,addr buffer,255</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; lea eax,buffer</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov [edi].lpszText,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke SendMessage,hwndTool,TTM_ADDTOOL,NULL,edi</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:nothing</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; ret</tt></b>
+<br><b><tt>EnumChild endp</tt></b><b><tt></tt></b>
+<p><b><tt>SetDlgToolArea proc uses edi esi hDlg:DWORD,lpti:DWORD,lpText:DWORD,id:DWORD,lprect:DWORD</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov edi,lpti</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov esi,lprect</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume esi:ptr RECT</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:ptr TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .if id==0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.left,0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.top,0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.right,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.bottom,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .elseif id==1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.left,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.top,0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.right,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.bottom,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .elseif id==2</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.left,0</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.top,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.right,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.bottom,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .else</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.left,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; shr eax,1</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.top,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].right</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].left</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.right,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov eax,[esi].bottom</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sub eax,[esi].top</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov [edi].rect.bottom,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; .endif</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; push lpText</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; pop [edi].lpszText</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke SendMessage,hwndTool,TTM_ADDTOOL,NULL,lpti</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:nothing</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume esi:nothing</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; ret</tt></b>
+<br><b><tt>SetDlgToolArea endp</tt></b>
+<br><b><tt>end start</tt></b></blockquote>
+
+<h3>
+<font face="Tahoma">Analysis:</font></h3>
+<font face="Tahoma">After the main dialog window is created, we create
+the tooltip control with CreateWindowEx.</font>
+<blockquote><b><tt>invoke InitCommonControls</tt></b>
+<br><b><tt>invoke CreateWindowEx,NULL,ADDR ToolTipsClassName,NULL,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TTS_ALWAYSTIP,CW_USEDEFAULT,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hInstance,NULL</tt></b>
+<br><b><tt>mov hwndTool,eax</tt></b></blockquote>
+<font face="Tahoma">After that, we proceed to define four tools for each
+corner of the dialog box.</font><font face="Tahoma"></font>
+<p><b><tt>&nbsp;&nbsp;&nbsp; mov id,0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font color="#99FF99">; used as the tool ID</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov ti.cbSize,sizeof TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov ti.uFlags,TTF_SUBCLASS&nbsp;&nbsp;&nbsp;<font color="#66FF99">
+; tell the tooltip control to subclass the dialog window.</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; push hDlg</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; pop ti.hWnd&nbsp;&nbsp;&nbsp; <font color="#99FF99">;
+handle to the window that contains the tool</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke GetWindowRect,hDlg,addr rect&nbsp;&nbsp;&nbsp;<font color="#99FF99">
+; obtain the dimension of the client area</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke SetDlgToolArea,hDlg,addr ti,addr MainDialogText1,id,addr
+rect</tt></b><font face="Tahoma"></font>
+<p><font face="Tahoma">We initialize the members of <b><font color="#99FF99">TOOLINFO
+</font></b>structure. Note that we want to divide the client area into
+4 tools so we need to know the dimension of the client area. That's why
+we call <b><font color="#FFFFCC">GetWindowRect</font></b>. We don't want
+to relay mouse messages to the tooltip control ourselves so we specify
+<b><font color="#99FF99">TIF_SUBCLASS </font></b>flag.</font>
+<br><font face="Tahoma"><b><font color="#FFFFCC">SetDlgToolArea</font></b>
+is a function that calculates the bounding rectangle of each tool and registers
+the tool to the tooltip control. I won't go into gory detail on the calculation,
+suffice to say that it divides the client area into 4 areas with the same
+sizes. Then it sends <b><font color="#99FF99">TTM_ADDTOOL</font></b> message
+to the tooltip control, passing the address of the <b><font color="#99FF99">TOOLINFO</font></b>
+structure in the lParam parameter.</font><font face="Tahoma"></font>
+<p><b><tt>&nbsp;&nbsp;&nbsp; invoke SendMessage,hwndTool,TTM_ADDTOOL,NULL,lpti</tt></b><font face="Tahoma"></font>
+<p><font face="Tahoma">After all 4 tools are registered, we can go on to
+the buttons on the dialog box. We can handle each button by its ID but
+this is tedious. Instead, we will use <b><font color="#FFFFCC">EnumChildWindows</font></b>
+API call to enumerate all controls on the dialog box and then registers
+them to the tooltip control. <b><font color="#FFFFCC">EnumChildWindows</font></b>
+has the following syntax:</font>
+<blockquote><b><font face="Tahoma"><font color="#FFCC99">EnumChildWindows
+proto hWnd:DWORD, lpEnumFunc:DWORD, lParam:DWORD</font></font></b></blockquote>
+<font face="Tahoma">hWnd is the handle to the parent window. lpEnumFunc
+is the address of the <b><font color="#FFFFCC">EnumChildProc</font></b>
+function that will be called for each control enumerated. lParam is the
+application-defined value that will be passed to the <b><font color="#FFFFCC">EnumChildProc</font></b>
+function. The <b><font color="#FFFFCC">EnumChildProc</font></b> function
+has the following definition:</font>
+<blockquote><b><font face="Tahoma"><font color="#FFCC99">EnumChildProc
+proto hwndChild:DWORD, lParam:DWORD</font></font></b></blockquote>
+<font face="Tahoma">hwndChild is the handle to a control enumerated by<b><font color="#FFFFCC">
+EnumChildWindows</font></b>. lParam is the same lParam value you pass to
+<b><font color="#FFFFCC">EnumChildWindows</font></b>.</font>
+<br><font face="Tahoma">In our example, we call<b><font color="#FFFFCC">
+EnumChildWindows</font></b> like this:</font>
+<blockquote><b><tt>invoke EnumChildWindows,hDlg,addr EnumChild,addr ti</tt></b></blockquote>
+<font face="Tahoma">We pass the address of the <b><font color="#66FF99">TOOLINFO</font></b>
+structure in the lParam parameter because we will register each child control
+to the tooltip control in the <b><font color="#FFFFCC">EnumChild </font></b>function.
+If we don't use this method, we need to declare <b><font color="#FFFFCC">ti
+</font></b>as a global variable which can introduce bugs.</font>
+<br><font face="Tahoma">When we call<b><font color="#FFFFCC"> EnumChildWindows</font></b>,
+Windows will enumerate the child controls on our dialog box and call the
+<b><font color="#FFFFCC">EnumChild</font></b> function once for each control
+enumerated. Thus if our dialog box has two controls, <b><font color="#FFFFCC">EnumChild</font></b>
+will be called twice.</font>
+<br><font face="Tahoma">The EnumChild function fills the relevant members
+of the TOOLINFO structure and then registers the tool with the tooltip
+control.</font>
+<blockquote><b><tt>EnumChild proc uses edi hwndChild:DWORD,lParam:DWORD</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; LOCAL buffer[256]:BYTE</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov edi,lParam</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:ptr TOOLINFO</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; push hwndChild</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; pop [edi].uId&nbsp;&nbsp;&nbsp;<font color="#99FF99">
+; we use the whole client area of the control as the tool</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; or [edi].uFlags,TTF_IDISHWND</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke GetWindowText,hwndChild,addr buffer,255</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; lea eax,buffer&nbsp;&nbsp;<font color="#99FF99">&nbsp;
+; use the window text as the tooltip text</font></tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; mov [edi].lpszText,eax</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; invoke SendMessage,hwndTool,TTM_ADDTOOL,NULL,edi</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; assume edi:nothing</tt></b>
+<br><b><tt>&nbsp;&nbsp;&nbsp; ret</tt></b>
+<br><b><tt>EnumChild endp</tt></b></blockquote>
+<font face="Tahoma">Note that in this case, we use a different type of
+tool: one that covers the whole client area of the window. We thus need
+to fill the <b><font color="#FFFFCC">uID</font></b> field with the handle
+to the window that contains the tool. Also we must specify <b><font color="#99FF99">TTF_IDISHWND</font></b>
+flag in the <b><font color="#FFFFCC">uFlags</font></b> member.</font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly
+Homepage</a>]</b></center>
+
+</body>
+</html>

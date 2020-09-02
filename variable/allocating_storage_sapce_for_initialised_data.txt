@@ -1,0 +1,9 @@
+db dw dd dq dt
+
+five of them.
+
+db -> define byte ,which is 1 byte
+dw-> define word ,which is 2 byte
+dd ->define double word ,which is 4 byte
+dq ->define quadword -8byte
+dt -> define 10 byte which is 10 byte

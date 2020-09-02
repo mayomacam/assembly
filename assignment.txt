@@ -1,0 +1,42 @@
+section .data
+    hello:     db 'Hello world!',10   
+    helloLen:  equ $-hello         
+
+section .bss
+    var1: resb 4
+
+section .text
+	global _start
+
+_start:
+    mov esi,123
+    mov [var1], esi
+
+    call PrintNumber
+
+	mov eax,1           
+	mov ebx,0       
+	int 80h;
+
+PrintNumber:
+    mov eax, [var1]
+    mov esi, 10
+
+    LP1:
+    div esi
+    cmp	eax,0
+
+    add edx, 48
+    mov [var1], edx
+
+    mov eax,4           
+	mov ebx,1        
+	mov ecx,var1     
+	mov edx,helloLen 
+	                   
+	int 80h            
+    jge	LP1   
+
+         
+
+    ret

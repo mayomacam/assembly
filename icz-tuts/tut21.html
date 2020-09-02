@@ -1,0 +1,581 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 21: Pipe</title>
+</head>
+<body text="#C0C0C0" bgcolor="#000000" link="#FFFF68" vlink="#00008B" alink="#FF0000">
+
+<center>
+<h1>
+<font face="Arial"><font color="#006600">Tutorial 21: Pipe</font></font></h1></center>
+<font face="Arial"><font size=-1>In this tutorial, we will explore pipe,
+what it is and what we can use it for. To make it more interesting, I throw
+in the technique on how to change the background and text color of an edit
+control.</font></font>
+<br><font face="Arial"><font size=-1>Download the example <a href="files/tut21.zip" STYLE="text-decoration:none">here</a>.</font></font>
+<h3>
+<font face="Arial"><font size=+0>Theory:</font></font></h3>
+<font face="Arial"><font size=-1>Pipe is a communication conduit or pathway
+with two ends. You can use pipe to exchange the data between two different
+processes, or within the same process. It's like a walkie-talkie. You give
+the other party one set and he can use it to communicate with you.</font></font>
+<br><font face="Arial"><font size=-1>There are two types of pipes: anonymous
+and named pipes. Anonymous pipe is, well, anonymous: that is, you can use
+it without knowing its name. A named pipe is the opposite: you have to
+know its name before you can use it.</font></font>
+<br><font face="Arial"><font size=-1>You can also categorize pipes according
+to its property: one-way or two-way. In a one-way pipe, the data can flow
+only in one direction: from one end to the other. While in a two-way pipe,
+the data can be exchanged between both ends.</font></font>
+<br><font face="Arial"><font size=-1>An anonymous pipe is always one-way
+while a named pipe can be one-way or two-way. A named pipe is usually used
+in a network environment where a server can connect to several clients.</font></font>
+<br><font face="Arial"><font size=-1>In this tutorial, we will examine
+anonymous pipe in some detail. Anonymous pipe's main purpose is to be used
+as a communcation pathway between a parent and child processes or between
+child processes.</font></font>
+<br><font face="Arial"><font size=-1>Anonymous pipe is really useful when
+you deal with a console application. A console application is a kind of
+win32 program which uses a console for its input &amp; output. A console
+is like a DOS box. However, a console application is a fully 32-bit program.
+It can use any GUI function, the same as other GUI programs. It just happens
+to have a console for its use.</font></font>
+<br><font face="Arial"><font size=-1>A console application has three handles
+it can use for its input &amp; output. They are called standard handles.
+There are three of them: standard input, standard output and standard error.
+Standard input handle is used to read/retrieve the information from the
+console and standard output handle is used to output/print the information
+to the console. Standard error handle is used to report error condition
+since its output cannot be redirected.</font></font>
+<br><font face="Arial"><font size=-1>A console application can retrieve
+those three standard handles by calling GetStdHandle function, specifying
+the handle it wants to obtain. A GUI application doesn't have a console.
+If you call GetStdHandle, it will return error. If you really want to use
+a console, you can call AllocConsole to allocate a new console. However,
+don't forget to call FreeConsole when you're done with the console.</font></font>
+<br><font face="Arial"><font size=-1>Anonymous pipe is most frequently
+used to redirect input and/or output of a child console application. The
+parent process may be a console or a GUI application but the child must
+be a console app. for this to work. As you know, a console application
+uses standard handles for its input and output. If we want to redirect
+the input and/or output of a console application, we can replace the handle
+with a handle to one end of a pipe. A console application will not know
+that it's using a handle to one end of a pipe. It'll use it as a standard
+handle. This is a kind of polymorphism, in OOP jargon. This approach is
+powerful since we need not modify the child process in anyway.</font></font>
+<br><font face="Arial"><font size=-1>Another thing you should know about
+a console application is where it gets those standard handles from. When
+a console application is created, the parent process has two choices: it
+can create a new console for the child or it can let the child inherit
+its own console. For the second approach to work, the parent process must
+be a console application or if it's a GUI application, it must call AllocConsole
+first to allocate a console.</font></font>
+<br><font face="Arial"><font size=-1>Let's begin the work. In order to
+create an anonymous pipe you need to call <font color="#FFFF00">CreatePipe</font>.
+CreatePipe has the following prototype:</font></font>
+<blockquote><b><font face="Arial"><font color="#C0C0C0"><font size=-1>CreatePipe
+proto pReadHandle:DWORD, \</font></font></font></b>
+<br><b><font face="Arial"><font color="#C0C0C0"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pWriteHandle:DWORD,\</font></font></font></b>
+<br><b><font face="Arial"><font color="#C0C0C0"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pPipeAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial"><font color="#C0C0C0"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+nBufferSize:DWORD</font></font></font></b></blockquote>
+
+<ul>
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF00">pReadHandle</font>
+is a pointer to a dword variable that will receive the handle to the read
+end of the pipe</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF00">pWriteHandle</font>
+is a pointer to a dword variable that will receive the handle to the write
+end of the pipe.</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF00">pPipeAttributes</font>
+points to a SECURITY_ATTRIBUTES structure that determines whether the returned
+read &amp; write handles are inheritable by child processes</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF00">nBufferSize </font>is
+the suggested size of the buffer the pipe will reserve for use. This is
+a suggested size only. You can use NULL to tell the function to use the
+default size.</font></font></li>
+</ul>
+<font face="Arial"><font size=-1>If the call is successful, the return
+value is nonzero. If it failed, the return value is zero.</font></font>
+<br><font face="Arial"><font size=-1>After the call is successful, you
+will get two handles, one to read end of the pipe and the other to the
+write end. Now I will outline the steps needed for redirecting the standard
+output of a child console program to your own process.Note that my method
+differs from the one in Borland's win32 api reference. The method in win32
+api reference assumes the parent process is a console application and thus
+the child can inherit the standard handles from it. But most of the time,
+we will need to redirect output from a console application to a GUI one.</font></font>
+<ol>
+<li>
+<font face="Arial"><font size=-1>Create an anonymous pipe with CreatePipe.
+Don't forget to set the bInheritable member of SECURITY_ATTRIBUTES to TRUE
+so the handles are inheritable.</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>Now we must prepare the parameters we
+will pass to CreateProcess since we will use it to load the child console
+application. One important structure is the STARTUPINFO structure. This
+structure determines the appearance of the main window of the child process
+when it first appears. This structure is vital to our purpose. You can
+hide the main window and pass the pipe handle to the child console process
+with it. Below is the members you must fill:</font></font></li>
+
+<ul>
+<li>
+<font face="Arial"><font size=-1>cb : the size of STARTUPINFO structure</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>dwFlags : the binary bit flags that determine
+which members of the structure are valid also it governs the show/hide
+state of the main window. For our purpose, you should use a combination
+of STARTF_USESHOWWINDOW and STARTF_USESTDHANDLES</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>hStdOutput and hStdError : the handles
+you want the child process to use as standard output/error handles. For
+our purpose, we will pass write handle of the pipe as the standard output
+and error of the child. So when the child outputs something to the standard
+output/error, it actually passes the info via the pipe to the parent process.</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>wShowWindow governs the show/hide state
+of the main window. For our purpose, we don't want the console window of
+the child to show so we put SW_HIDE into this member.</font></font></li>
+</ul>
+
+<li>
+<font face="Arial"><font size=-1>Call CreateProcess to load the child application.
+After CreateProcess is successful, the child is still dormant. It is loaded
+into memory but it doesn't run immediately</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>Close the write pipe handle. This is necessary.
+Because the parent process has no use for the write pipe handle, and the
+pipe won't work if there are more than one write end, we MUST close it
+before reading the data from the pipe. However, don't close the write handle
+before calling CreateProcess, your pipe will be broken. You should close
+it just after CreateProcess returns and before you read data from the read
+end of the pipe.</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>Now you can read data from the read end
+of the pipe with ReadFile. With ReadFile, you kick the child process into
+running mode. It will start execution and when it writes something to the
+standard output handle (which is actually the handle to the write end of
+the pipe), the data are sent through the pipe to the read end. You can
+think of ReadFile as sucking data from the read end of the pipe. You must
+call ReadFile repeatedly until it returns 0 which means there are no more
+data to be read. You can do anything with the data you read from the pipe.
+In our example, I put them into an edit control.</font></font></li>
+
+<li>
+<font face="Arial"><font size=-1>Close the read pipe handle.</font></font></li>
+</ol>
+
+<h3>
+<font face="Arial"><font size=+0>Example:</font></font></h3>
+
+<blockquote><b><font face="Arial"><font color="#999900"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>include \masm32\include\gdi32.inc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>includelib
+\masm32\lib\gdi32.lib</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>WinMain PROTO
+:DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial"><font size=-1><font color="#999900">IDR_MAINMENU
+equ 101&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#993366">&nbsp;
+; the ID of the main menu</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>IDM_ASSEMBLE
+equ 40001</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>ClassName&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "PipeWinClass",0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>AppName&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "One-way Pipe Example",0 EditClass db "EDIT",0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>CreatePipeError&nbsp;&nbsp;&nbsp;&nbsp;
+db "Error during pipe creation",0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>CreateProcessError&nbsp;&nbsp;&nbsp;&nbsp;
+db "Error during process creation",0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>CommandLine&nbsp;&nbsp;&nbsp;&nbsp;
+db "ml /c /coff /Cp test.asm",0</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>hInstance
+HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>hwndEdit
+dd ?</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov hInstance,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>WinMain proc
+hInst:DWORD,hPrevInst:DWORD,CmdLine:DWORD,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.style, CS_HREDRAW or CS_VREDRAW mov wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+push hInst</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop wc.hInstance</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hbrBackground,COLOR_APPWORKSPACE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.lpszMenuName,IDR_MAINMENU</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\ WS_OVERLAPPEDWINDOW+WS_VISIBLE,CW_USEDEFAULT,\
+CW_USEDEFAULT,400,200,NULL,NULL,\ hInst,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov hwnd,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>WinMain endp</font></font></font></b>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>WndProc proc
+hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL rect:RECT</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hRead:DWORD</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hWrite:DWORD</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL startupinfo:STARTUPINFO</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL pinfo:PROCESS_INFORMATION</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL buffer[1024]:byte</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL bytesRead:DWORD</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hdc:DWORD</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL sat:SECURITY_ATTRIBUTES</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,addr EditClass, NULL, WS_CHILD+ WS_VISIBLE+
+ES_MULTILINE+ ES_AUTOHSCROLL+ ES_AUTOVSCROLL, 0, 0, 0, 0, hWnd, NULL, hInstance,
+NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndEdit,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_CTLCOLOREDIT</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTextColor,wParam,Yellow</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetBkColor,wParam,Black</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStockObject,BLACK_BRUSH</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_SIZE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edx,lParam</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ecx,edx</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr ecx,16</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and edx,0ffffh</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MoveWindow,hwndEdit,0,0,edx,ecx,TRUE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_ASSEMBLE</font></font></font></b>
+<br>
+    <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    mov sat.nLength,sizeof SECURITY_ATTRIBUTES</font></font></font></b> <br>
+    <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov sat.lpSecurityDescriptor,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov sat.bInheritHandle,TRUE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreatePipe,addr hRead,addr hWrite,addr sat,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox, hWnd, addr CreatePipeError, addr AppName, MB_ICONERROR+
+MB_OK</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.cb,sizeof STARTUPINFO</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStartupInfo,addr startupinfo</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax, hWrite</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.hStdOutput,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.hStdError,eax</font></font></font></b>
+<br>
+    <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    mov startupinfo.dwFlags, STARTF_USESHOWWINDOW+ STARTF_USESTDHANDLES</font></font></font></b> 
+    <br>
+    <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.wShowWindow,SW_HIDE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateProcess, NULL, addr CommandLine, NULL, NULL, TRUE, NULL, NULL,
+NULL, addr startupinfo, addr pinfo</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hWnd,addr CreateProcessError,addr&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+AppName,MB_ICONERROR+MB_OK</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hWrite</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RtlZeroMemory,addr buffer,1024</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReadFile,hRead,addr buffer,1023,addr bytesRead,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.break</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,EM_SETSEL,-1,0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,EM_REPLACESEL,FALSE,addr buffer</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hRead</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam ret</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>WndProc endp</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>end start</font></font></font></b></blockquote>
+
+<h3>
+<font face="Arial"><font size=+0>Analysis:</font></font></h3>
+<font face="Arial"><font size=-1>The example will call ml.exe to assemble
+a file named test.asm and redirect the output of ml.exe to the edit control
+in its client area.</font></font>
+<br><font face="Arial"><font size=-1>When the program is loaded, it registers
+the window class and creates the main window as usual. The first thing
+it does during main window creation is to create an edit control which
+will be used to display the output of ml.exe.</font></font>
+<br><font face="Arial"><font size=-1>Now the interesting part, we will
+change the text and background color of the edit control. When an edit
+control is going to paint its client area, it sends WM_CTLCOLOREDIT message
+to its parent.</font></font>
+<br><font face="Arial"><font size=-1>wParam contains the handle to the
+device context that the edit control will use to write its own client area.
+We can use this opportunity to modify the characteristics of the HDC.</font></font>
+<blockquote><b><font face="Arial"><font size=-1>&nbsp;&nbsp;&nbsp; <font color="#999900">.elseif
+uMsg==WM_CTLCOLOREDIT</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTextColor,wParam,Yellow</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTextColor,wParam,Black</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStockObject,BLACK_BRUSH</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b></blockquote>
+<font face="Arial"><font size=-1>SetTextColor changes the text color to
+yellow. SetTextColor changes the background color of the text to black.
+And lastly, we obtain the handle to the black brush which we return to
+Windows. With WM_CTLCOLOREDIT message, you must return a handle to a brush
+which Windows will use to paint the background of the edit control. In
+our example, I want the background to be black so I return the handle to
+the black brush to Windows.</font></font>
+<br><font face="Arial"><font size=-1>Now when the user selects <font color="#FFFF00">Assemble</font>
+menuitem, it creates an anonymous pipe.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_ASSEMBLE</font></font></font></b>
+<br>
+  <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  mov sat.nLength,sizeof SECURITY_ATTRIBUTES</font></font></font></b> <br>
+  <b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov sat.lpSecurityDescriptor,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov sat.bInheritHandle,TRUE</font></font></font></b>
+<p><font face="Arial"><font size=-1>Prior to calling CreatePipe, we must
+fill the SECURITY_ATTRIBUTES structure first. Note that we can use NULL
+in lpSecurityDescriptor member if we don't care about security. And the
+bInheritHandle member must be TRUE so that the pipe handles are inheritable
+to the child process.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreatePipe,addr hRead,addr hWrite,addr sat,NULL</font></font></font></b>
+<p><font face="Arial"><font size=-1>&nbsp;After that, we call CreatePipe
+which, if successful, will fill hRead and hWrite variables with the handles
+to read and write ends of the pipe respectively.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.cb,sizeof STARTUPINFO</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStartupInfo,addr startupinfo</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax, hWrite</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.hStdOutput,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.hStdError,eax</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.dwFlags, STARTF_USESHOWWINDOW+ STARTF_USESTDHANDLES</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov startupinfo.wShowWindow,SW_HIDE</font></font></font></b>
+<p><font face="Arial"><font size=-1>Next we must fill the STARTUPINFO structure.
+We call GetStartupInfo to fill the STARTUPINFO structure with default values
+of the parent process. You MUST fill the STARTUPINFO structure with this
+call if you intend your code to work under both win9x and NT. After GetStartupInfo
+call returns, you can modify the members that are important. We copy the
+handle to the write end of the pipe into hStdOutput and hStdError since
+we want the child process to use it instead of the default standard output/error
+handles. We also want to hide the console window of the child process,
+so we put SW_HIDE value into wShowWidow member. And lastly, we must indicate
+that hStdOutput, hStdError and wShowWindow members are valid and must be
+used by specifying the flags STARTF_USESHOWWINDOW and STARTF_USESTDHANDLES
+in dwFlags member.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateProcess, NULL, addr CommandLine, NULL, NULL, TRUE, NULL, NULL,
+NULL, addr startupinfo, addr pinfo</font></font></font></b>
+<p><font face="Arial"><font size=-1>We now create the child process with
+CreateProcess call. Note that the bInheritHandles parameter must be set
+to TRUE for the pipe handle to work.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hWrite</font></font></font></b>
+<p><font face="Arial"><font size=-1>After we successfully create the child
+process, we must close the write end of the pipe. Remember that we passed
+the write handle to the child process via STARTUPINFO structure. If we
+don't close the write handle from our end, there will be two write ends.
+And that the pipe will not work. We must close the write handle after CreateProcess
+but before we read data from the read end of the pipe.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RtlZeroMemory,addr buffer,1024</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReadFile,hRead,addr buffer,1023,addr bytesRead,NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.break</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,EM_SETSEL,-1,0</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,EM_REPLACESEL,FALSE,addr buffer</font></font></font></b>
+<br><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<p><font face="Arial"><font size=-1>Now we are ready to read the data from
+the standard output of the child process. We will stay in an infinite loop
+until there are no more data left to read from the pipe. We call RtlZeroMemory
+to fill the buffer with zeroes then call ReadFile, passing the read handle
+of the pipe in place of a file handle. Note that we only read a maximum
+of 1023 bytes since we need the data to be an ASCIIZ string which we can
+pass on to the edit control.</font></font>
+<br><font face="Arial"><font size=-1>When ReadFile returns with the data
+in the buffer, we fill the data into the edit control. However, there is
+a slight problem here. If we use SetWindowText to put the data into the
+edit control, the new data will overwrite existing data! We want the data
+to append to the end of the existing data.</font></font>
+<br><font face="Arial"><font size=-1>To achieve that goal, we first move
+the caret to the end of the text in the edit control by sending EM_SETSEL
+message with wParam==-1. Next, we append the data at that point with EM_REPLACESEL
+message.</font></font>
+<p><b><font face="Arial"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hRead</font></font></font></b>
+<p><font face="Arial"><font size=-1>When ReadFile returns NULL, we break
+out of the loop and close the read handle.</font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><a href="http://win32asm.cjb.net" style="text-decoration:none">Iczelion's
+Win32 Assembly Homepage</a></b></center>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+section .bss 
+var1: resb 4
+
+mov esp,65
+mov [var1],esp
+
+when we print var1 then we get A

@@ -1,0 +1,10 @@
+mov ebp,10
+mov esi,5
+call epicPrint
+
+#========================================================================
+
+push ebp ->stack push
+push esi  ->stack push
+pop ebp
+pop esi

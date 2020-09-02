@@ -1,0 +1,14 @@
+we can use varible +any value to see value after that
+
+like 
+hello: db 'hello world:' ,10
+hellolen: equ $-hello
+hello2: db '12345678'
+
+
+then if print the valuelike this
+
+mov ecx, hello +5
+
+output: world: 12345
+

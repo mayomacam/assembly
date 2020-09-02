@@ -1,0 +1,5 @@
+not 
+
+
+mov esp,67
+not esp

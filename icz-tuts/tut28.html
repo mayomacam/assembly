@@ -1,0 +1,492 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 28: Win32 Debug API Part 1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body bgcolor="#330099" text="#FFFFFF" link="#FFFFCC" vlink="#FFCCCC" alink="#CCFFCC">
+<h1 align="center"><font face="Arial, Helvetica, sans-serif" color="#FFFFCC">Tutorial 
+  28: Win32 Debug API Part 1</font></h1>
+<p><font face="MS Sans Serif" size="-1">In this tutorial, you'll learn what Win32 
+  offers to developers regarding debugging primitives. You'll know how to debug 
+  a process when you're finished with this tutorial. <br>
+  Download <b><a href="files/tut28.zip" style="text-decoration:none">the example</a></b>.</font></p>
+<h3><font face="MS Sans Serif" size="-1">Theory:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Win32 has several APIs that allow programmers 
+  to use some of the powers of a debugger. They are called Win32 Debug APIs or 
+  primitives. With them, you can:</font></p>
+<ul>
+  <li><font face="MS Sans Serif" size="-1">Load a program or attach to a running 
+    program for debugging</font></li>
+  <li><font face="MS Sans Serif" size="-1">Obtain low-level information about 
+    the program you're debugging, such as process ID, address of entrypoint, image 
+    base and so on.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Be notified of debugging-related events 
+    such as when a process/thread starts/exits, DLLs are loaded/unloaded etc.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Modify the process/thread being debugged</font></li>
+</ul>
+<p><font face="MS Sans Serif" size="-1">In short, you can code a simple debugger 
+  with those APIs. Since this subject is vast, I divide it into several managable 
+  parts: this tutorial being the first part. I'll explain the basic concepts and 
+  general framework for using Win32 Debug APIs in this tutorial.</font><br>
+  <font face="MS Sans Serif" size="-1">The steps in using Win32 Debug APIs are:</font></p>
+<ol>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Create a process 
+    or attach your program to a running process</font></b></font><font face="MS Sans Serif" size="-1">. 
+    This is the first step in using Win32 Debug APIs. Since your program will 
+    act as a debugger, you need a program to debug. The program being debugged 
+    is called a debuggee. You can acquire a debuggee in two ways:</font> 
+    <ul>
+      <li><font face="MS Sans Serif" size="-1">You can create the debuggee process 
+        yourself with <font color="#FFFFCC"><b>CreateProcess</b></font>. In order 
+        to create a process for debugging, you must specify the <font color="#FFCCCC"><b>DEBUG_PROCESS</b></font> 
+        flag. This flag tells Windows that we want to debug the process. Windows 
+        will send notifications of important debugging-related events (debug events) 
+        that occur in the debuggee to your program. The debuggee process will 
+        be immediately suspended until your program is ready. If the debuggee 
+        also creates child processes, Windows will also send debug events that 
+        occur in all those child processes to your program as well. This behavior 
+        is usually undesirable. You can disable this behavior by specifying <font color="#FFCCCC"><b>DEBUG_ONLY_THIS_PROCESS</b></font> 
+        flag in combination of <font color="#FFCCCC"><b>DEBUG_PROCESS</b></font> 
+        flag. </font></li>
+      <li><font face="MS Sans Serif" size="-1">You can attach your program to 
+        a running process with <font color="#FFFFCC"><b>DebugActiveProcess.</b></font></font></li>
+    </ul>
+  </li>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Wait for debugging 
+    events</font></b></font><font face="MS Sans Serif" size="-1">. After your 
+    program acquired a debuggee, the debuggee's primary thread is suspended and 
+    will continue to be suspended until your program calls <font color="#FFFFCC"><b>WaitForDebugEvent</b></font>. 
+    This function works like other WaitForXXX functions, ie. it blocks the calling 
+    thread until the waited-for event occurs. In this case, it waits for debug 
+    events to be sent by Windows. Let's see its definition:</font> 
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CCCC99">WaitForDebugEvent 
+      proto lpDebugEvent:DWORD, dwMilliseconds:DWORD</font></b></font></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CC9900">lpDebugEvent</font></b> 
+      is the address of a <font color="#33CC00"><b>DEBUG_EVENT</b></font> structure 
+      that will be filled with information about the debug event that occurs within 
+      the debuggee.</font></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CC9900">dwMilliseconds</font></b> 
+      is the length of time in milliseconds this function will wait for the debug 
+      event to occur. If this period elapses and no debug event occurs,<font color="#FFFFCC"><b> 
+      WaitForDebugEvent</b></font> returns to the caller. On the other hand, if 
+      you specify<font color="#FFCCCC"><b> INFINITE </b></font>constant in this 
+      argument, the function will not return until a debug event occurs.</font></p>
+    <p><font face="MS Sans Serif" size="-1">Now let's examine the DEBUG_EVENT 
+      structure in more detail.</font></p>
+    <p><b><font face="MS Sans Serif" size="-1" color="#33CC00">DEBUG_EVENT STRUCT 
+      <br>
+      &nbsp;&nbsp;&nbsp;dwDebugEventCode dd ? <br>
+      &nbsp;&nbsp;&nbsp;dwProcessId dd ? <br>
+      &nbsp;&nbsp;&nbsp;dwThreadId dd ? <br>
+      &nbsp;&nbsp;&nbsp;u DEBUGSTRUCT <> <br>
+      DEBUG_EVENT ENDS </font></b></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CC9900">dwDebugEventCode</font></b> 
+      contains the value that specifies what type of debug event occurs. In short, 
+      there can be many types of events, your program needs to check the value 
+      in this field so it knows what type of event occurs and responds appropriately. 
+      The possible values are:</font></p>
+  </li>
+  <table border="1" cellspacing="2" cellpadding="2" align="center">
+    <tr bgcolor="#009999"> 
+      <th><b><font face="MS Sans Serif" size="-1">Value</font></b></th>
+      <th><font face="MS Sans Serif" size="-1">Meanings</font></th>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">CREATE_PROCESS_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A process is created. This event 
+        will be sent when the debuggee process is just created (and not yet running) 
+        or when your program just attaches itself to a running process with <font color="#FFFFCC"><b>DebugActiveProcess</b></font>. 
+        This is the first event your program will receive.</font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">EXIT_PROCESS_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A process exits.</font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">CREATE_THEAD_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A new thread is created in the 
+        debuggee process or when your program first attaches itself to a running 
+        process. Note that you'll not receive this notification when the primary 
+        thread of the debuggee is created. </font></td>
+    </tr>
+    <tr> 
+      <td height="131"><b><font face="MS Sans Serif" size="-1">EXIT_THREAD_DEBUG_EVENT</font></b></td>
+      <td height="131"><font face="MS Sans Serif" size="-1">A thread in the debuggee 
+        process exits. Your program will not receive this event for the primary 
+        thread. In short, you can think of the primary thread of the debuggee 
+        as the equivalent of the debuggee process itself. Thus, when your program 
+        sees <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_EVENT</b></font>, it's 
+        actually the <font color="#FFCCCC"><b>CREATE_THREAD_DEBUG_EVENT</b></font> 
+        for the primary thread.</font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">LOAD_DLL_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">The debuggee loads a DLL. You'll 
+        receive this event when the PE loader first resolves the links to DLLs 
+        (you call <font color="#FFFFCC"><b>CreateProcess</b></font> to load the 
+        debuggee) and when the debuggee calls LoadLibrary.</font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">UNLOAD_DLL_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A DLL is unloaded from the debuggee 
+        process. </font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">EXCEPTION_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An exception occurs in the debuggee 
+        process. <font color="#FF3333"><b>Important:</b></font> <font color="#33FF33">This 
+        event will occur once just before the debuggee starts executing its first 
+        instruction. The exception is actually a debug break (int 3h). When you 
+        want to resume the debuggee, call <font color="#FFFFCC"><b>ContinueDebugEvent 
+        </b></font>with<b><font color="#FFCCCC"> DBG_CONTINUE </font></b>flag. 
+        Don't use <font color="#FFCCCC"><b>DBG_EXCEPTION_NOT_HANDLED</b></font> 
+        flag else the debuggee will refuse to run under NT (on Win98, it works 
+        fine).</font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">OUTPUT_DEBUG_STRING_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">This event is generated when the 
+        debuggee calls <font color="#FFFFCC"><b>DebugOutputString</b></font> function 
+        to send a message string to your program. </font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">RIP_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">System debugging error occurs</font></td>
+    </tr>
+  </table>
+  <p><font face="MS Sans Serif" size="-1"><b><font color="#CC9900">dwProcessId</font></b> 
+    and <font color="#CC9900"><b>dwThreadId</b></font> are the process and thread 
+    Ids of the process that the debug event occurs. You can use these values as 
+    identifiers of the process/thread you're interested in. Remember that if you 
+    use <font color="#FFFFCC"><b>CreateProcess</b></font> to load the debuggee, 
+    you also get the process and thread IDs of the debuggee in the <font color="#FFCCCC"><b>PROCESS_INFO</b></font> 
+    structure. You can use these values to differentiate between the debug events 
+    occurring in the debuggee and its child processes (in case you didn't specify 
+    <font color="#FFCCCC"> <b>DEBUG_ONLY_THIS_PROCESS </b></font>flag).</font></p>
+  <p> <font face="MS Sans Serif" size="-1"><b><font color="#CC9900">u</font></b> 
+    is a union that contains more information about the debug event. It can be 
+    one of the following structures depending on the value of <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+    above. </font></p>
+  <table border="1" cellspacing="2" cellpadding="2" align="center">
+    <tr bgcolor="#009900"> 
+      <th><b><font face="MS Sans Serif" size="-1">value in dwDebugEventCode</font></b></th>
+      <th><font face="MS Sans Serif" size="-1">Interpretation of u</font></th>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">CREATE_PROCESS_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1"> A <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_INFO</b></font> 
+        structure named <font color="#CCCCFF"><b><font color="#FF6666">CreateProcessInfo</font></b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">EXIT_PROCESS_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An <font color="#FFCCCC"><b>EXIT_PROCESS_DEBU<font color="#FF6666">G_INFO</font></b></font><font color="#FF6666"><b> 
+        structure named</b></font> ExitProcess</font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">CREATE_THREAD_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A <font color="#FFCCCC"><b>CREATE_THREAD_DEBUG_INFO</b></font> 
+        structure named <font color="#FF6666"><b>CreateThread</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">EXIT_THREAD_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An <font color="#FFCCCC"><b>EXIT_THREAD_DEBUG_EVENT 
+        </b></font>structure named <font color="#FF6666"><b>ExitThread</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">LOAD_DLL_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A <font color="#FFCCCC"><b>LOAD_DLL_DEBUG_INFO</b></font> 
+        structure named<font color="#FF6666"><b> LoadDll</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">UNLOAD_DLL_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An <font color="#FFCCCC"><b>UNLOAD_DLL_DEBUG_INFO</b></font> 
+        structure named <font color="#FF6666"><b>UnloadDll</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">EXCEPTION_DEBUG_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An <font color="#FFCCCC"><b>EXCEPTION_DEBUG_INFO</b></font> 
+        structure named <font color="#FF6666"><b>Exception</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">OUTPUT_DEBUG_STRING_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">An <font color="#FFCCCC"><b>OUTPUT_DEBUG_STRING_INFO 
+        </b></font>structure named <font color="#FF6666"><b>DebugString</b></font></font></td>
+    </tr>
+    <tr> 
+      <td><b><font face="MS Sans Serif" size="-1">RIP_EVENT</font></b></td>
+      <td><font face="MS Sans Serif" size="-1">A <font color="#FFCCCC"><b>RIP_INFO</b></font> 
+        structure named <font color="#FF6666"><b>RipInfo</b></font></font></td>
+    </tr>
+  </table>
+  <p><font face="MS Sans Serif" size="-1">I won't go into detail about all those 
+    structures in this tutorial, only the <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_INFO 
+    </b></font>structure will be covered here. <br>
+    Assuming that our program calls <font color="#FFFFCC"><b>WaitForDebugEvent</b></font> 
+    and it returns. The first thing we should do is to examine the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+    to see which type of debug event occured in the debuggee process. For example, 
+    if the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> is <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_EVENT</b></font>, 
+    you can interpret the member in <font color="#FFFFCC"><b>u</b></font> as <font color="#FFFFCC"><b>CreateProcessInfo</b></font> 
+    and access it with <font color="#CCFFCC"><b>u.CreateProcessInfo</b></font>. 
+    </font></p>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Do whatever 
+    your program want to do in response to the debug event</font></b></font><font face="MS Sans Serif" size="-1">. 
+    When <font color="#FFFFCC"><b>WaitForDebugEvent </b></font>returns, it means 
+    a debug event just occurred in the debuggee process or a timeout occurs. Your 
+    program needs to examine the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+    in order to react to the event appropriately. In this regard, it's like processing 
+    Windows messages: you choose to handle some and ignore some. </font></li>
+  <li><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">Let the debuggee 
+    continues execution</font></b>. When a debug event occurs, Windows suspends 
+    the debuggee. When you're finished with the event handling, you need to kick 
+    the debuggee into moving again. You do this by calling <font color="#FFFFCC"><b>ContinueDebugEvent</b></font> 
+    function.</font> 
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#33FF33">ContinueDebugEvent 
+      proto dwProcessId:DWORD, dwThreadId:DWORD, dwContinueStatus:DWORD</font></b></font></p>
+    <p><font face="MS Sans Serif" size="-1">This function resumes the thread that 
+      was previously suspended because a debug event occurred.<br>
+      <font color="#CC9900"><b>dwProcessId</b></font> and <font color="#CC9900"><b>dwThreadId</b></font> 
+      are the process and thread IDs of the thread that will be resumed. You usually 
+      take these two values from the <font color="#CCFFCC"><b>dwProcessId</b></font> 
+      and <font color="#CCFFCC"><b>dwThreadId</b></font> members of the <font color="#FFCCCC"><b>DEBUG_EVENT</b></font> 
+      structure.<br>
+      dwContinueStatus specifies how to continue the thread that reported the 
+      debug event. There are two possible values:<font color="#CCFFCC"><b> DBG_CONTINUE</b></font> 
+      and <font color="#CCFFCC"><b>DBG_EXCEPTION_NOT_HANDLED</b></font>. For all 
+      other debug events, those two values do the same thing: resume the thread. 
+      The exception is the <font color="#CCFFCC"><b>EXCEPTION_DEBUG_EVENT</b></font>. 
+      If the thread reports an exception debug event, it means an exception occurred 
+      in the debuggee thread. If you specify <font color="#CCFFCC"><b>DBG_CONTINUE</b></font>, 
+      the thread will ignore its own exception handling and continue with the 
+      execution. In this scenario, your program must examine and resolve the exception 
+      itself before resuming the thread with <font color="#CCFFCC"><b>DBG_CONTINUE</b></font> 
+      else the exception will occur again and again and again.... If you specify 
+      <font color="#CCFFCC"> <b>DBG_EXCEPTION_NOT_HANDLED</b></font>, your program 
+      is telling Windows that it didn't handle the exception: Windows should use 
+      the default exception handler of the debuggee to handle the exception. <br>
+      In conclusion, if the debug event refers to an exception in the debuggee 
+      process, you should call <font color="#FFFFCC"><b>ContinueDebugEvent</b></font> 
+      with <font color="#FFCCCC"><b><font color="#CCFFCC">DBG_CONTINUE</font></b></font> 
+      flag if your program already removed the cause of exception. Otherwise, 
+      your program must call <font color="#FFFFCC"> <b>ContinueDebugEvent</b></font> 
+      with <font color="#CCFFCC"><b>DBG_EXCEPTION_NOT_HANDLED</b></font> flag. 
+      Except in one case which you must always use <font color="#FFCCCC"><b>DBG_CONTINUE</b></font> 
+      flag: the first <font color="#FFCCCC"> <b>EXCEPTION_DEBUG_EVENT</b></font> 
+      which has the value <font color="#FFCCCC"><b>EXCEPTION_BREAKPOINT</b></font> 
+      in the ExceptionCode member. When the debuggee is going to execute its very 
+      first instruction, your program will receive the exception debug event. 
+      It's actually a debug break (int 3h). If you respond by calling <font color="#FFFFCC"><b>ContinueDebugEvent 
+      </b></font>with <font color="#FFCCCC"><b>DBG_EXCEPTION_NOT_HANDLED</b></font> 
+      flag, Windows NT will refuse to run the debuggee (because no one cares for 
+      it). You must always use <font color="#FFCCCC"><b>DBG_CONTINUE</b></font> 
+      flag in this case to tell Windows that you want the thread to go on.</font></p>
+  </li>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Continue this 
+    cycle in an infinite loop until the debuggee process exits</font></b></font><font face="MS Sans Serif" size="-1">. 
+    Your program must be in an infinite loop much like a message loop until the 
+    debuggee exits. The loop looks like this:</font> 
+    <p><font size="-1" face="MS Sans Serif"><b>.while TRUE<br>
+      &nbsp;&nbsp;&nbsp; invoke WaitForDebugEvent, addr DebugEvent, INFINITE<br>
+      &nbsp;&nbsp;&nbsp;.break .if DebugEvent.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT<br>
+      &nbsp;&nbsp;&nbsp;<font color="#CCFFCC">&lt;Handle the debug events&gt;</font><br>
+      &nbsp;&nbsp;&nbsp;invoke ContinueDebugEvent, DebugEvent.dwProcessId, DebugEvent.dwThreadId, 
+      DBG_EXCEPTION_NOT_HANDLED <br>
+      .endw </b></font><br>
+    </p>
+    <p><font face="MS Sans Serif" size="-1">Here's the catch: Once you start debugging 
+      a program, you just can't detach from the debuggee until it exits.</font></p>
+  </li>
+</ol>
+<p><font face="MS Sans Serif" size="-1">Let's summarize the steps again:</font></p>
+<ol>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Create a process 
+    or attach your program to a running process</font></b></font><font face="MS Sans Serif" size="-1">.</font></li>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Wait for debugging 
+    events</font></b></font></li>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Do whatever 
+    your program want to do in response to the debug event</font></b></font><font face="MS Sans Serif" size="-1">.</font></li>
+  <li><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">Let the debuggee 
+    continues execution</font></b>.</font></li>
+  <li><font color="#CCFFCC"><b><font face="MS Sans Serif" size="-1">Continue this 
+    cycle in an infinite loop until the debuggee process exits</font></b></font></li>
+</ol>
+<h3><font face="MS Sans Serif" size="-1">Example:</font></h3>
+<p><font face="MS Sans Serif" size="-1">This example debugs a win32 program and 
+  shows important information such as the process handle, process Id, image base 
+  and so on.</font></p>
+<p><font face="Fixedsys" size="-1">.386 <br>
+  .model flat,stdcall <br>
+  option casemap:none <br>
+  include \masm32\include\windows.inc <br>
+  include \masm32\include\kernel32.inc <br>
+  include \masm32\include\comdlg32.inc <br>
+  include \masm32\include\user32.inc <br>
+  includelib \masm32\lib\kernel32.lib <br>
+  includelib \masm32\lib\comdlg32.lib <br>
+  includelib \masm32\lib\user32.lib <br>
+  .data <br>
+  AppName db "Win32 Debug Example no.1",0 <br>
+  ofn OPENFILENAME <> <br>
+  FilterString db "Executable Files",0,"*.exe",0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;db 
+  "All Files",0,"*.*",0,0 <br>
+  ExitProc db "The debuggee exits",0 <br>
+  NewThread db "A new thread is created",0 <br>
+  EndThread db "A thread is destroyed",0 <br>
+  ProcessInfo db "File Handle: %lx ",0dh,0Ah <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;db "Process 
+  Handle: %lx",0Dh,0Ah <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;db "Thread 
+  Handle: %lx",0Dh,0Ah <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;db "Image 
+  Base: %lx",0Dh,0Ah <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;db "Start 
+  Address: %lx",0 <br>
+  .data? <br>
+  buffer db 512 dup(?) <br>
+  startinfo STARTUPINFO <> <br>
+  pi PROCESS_INFORMATION <> <br>
+  DBEvent DEBUG_EVENT <> <br>
+  .code <br>
+  start: <br>
+  mov ofn.lStructSize,sizeof ofn <br>
+  mov ofn.lpstrFilter, offset FilterString <br>
+  mov ofn.lpstrFile, offset buffer <br>
+  mov ofn.nMaxFile,512 <br>
+  mov ofn.Flags, OFN_FILEMUSTEXIST or OFN_PATHMUSTEXIST or OFN_LONGNAMES or OFN_EXPLORER 
+  or OFN_HIDEREADONLY <br>
+  invoke GetOpenFileName, ADDR ofn <br>
+  .if eax==TRUE <br>
+  invoke GetStartupInfo,addr startinfo <br>
+  invoke CreateProcess, addr buffer, NULL, NULL, NULL, FALSE, DEBUG_PROCESS+ DEBUG_ONLY_THIS_PROCESS, 
+  NULL, NULL, addr startinfo, addr pi <br>
+  .while TRUE <br>
+  &nbsp;&nbsp;&nbsp;invoke WaitForDebugEvent, addr DBEvent, INFINITE <br>
+  &nbsp;&nbsp;&nbsp;.if DBEvent.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox, 0, addr ExitProc, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .break <br>
+  &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke wsprintf, addr buffer, addr ProcessInfo, 
+  DBEvent.u.CreateProcessInfo.hFile, DBEvent.u.CreateProcessInfo.hProcess, DBEvent.u.CreateProcessInfo.hThread, 
+  DBEvent.u.CreateProcessInfo.lpBaseOfImage, DBEvent.u.CreateProcessInfo.lpStartAddress 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr buffer, addr 
+  AppName, MB_OK+MB_ICONINFORMATION &nbsp;&nbsp;&nbsp;<br>
+  &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXCEPTION_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke ContinueDebugEvent, 
+  DBEvent.dwProcessId, DBEvent.dwThreadId, DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.continue <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==CREATE_THREAD_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr NewThread, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXIT_THREAD_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr EndThread, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp; invoke ContinueDebugEvent, DBEvent.dwProcessId, DBEvent.dwThreadId, 
+  DBG_EXCEPTION_NOT_HANDLED <br>
+  .endw <br>
+  invoke CloseHandle,pi.hProcess <br>
+  invoke CloseHandle,pi.hThread <br>
+  .endif <br>
+  invoke ExitProcess, 0 <br>
+  end start </font></p>
+<h3>Analysis:</h3>
+<p><font face="MS Sans Serif" size="-1">The program fills the OPENFILENAME structure 
+  and then calls GetOpenFileName to let the user choose a program to be debugged.</font></p>
+<p><font face="Fixedsys" size="-1">invoke GetStartupInfo,addr startinfo <br>
+  invoke CreateProcess, addr buffer, NULL, NULL, NULL, FALSE, DEBUG_PROCESS+ DEBUG_ONLY_THIS_PROCESS, 
+  NULL, NULL, addr startinfo, addr pi </font></p>
+<p><font face="MS Sans Serif" size="-1">When the user chose one, it calls <font color="#FFFFCC"><b>CreateProcess</b></font> 
+  to load the program. It calls <font color="#FFFFCC"><b>GetStartupInfo</b></font> 
+  to fill the <font color="#CCFFCC"><b>STARTUPINFO</b></font> structure with its 
+  default values. Note that we use <font color="#FFCCCC"><b>DEBUG_PROCESS</b></font> 
+  combined with <font color="#FFCCCC"><b>DEBUG_ONLY_THIS_PROCESS</b></font> flags 
+  in order to debug only this program, not including its child processes.</font></p>
+<p><font face="Fixedsys" size="-1">.while TRUE <br>
+  &nbsp;&nbsp;&nbsp;invoke WaitForDebugEvent, addr DBEvent, INFINITE </font><font face="MS Sans Serif" size="-1"><br>
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">When the debuggee is loaded, we enter 
+  the infinite debug loop, calling <font color="#FFFFCC"><b>WaitForDebugEvent.</b></font> 
+  <font color="#FFFFCC"><b>WaitForDebugEvent</b></font> will not return until 
+  a debug event occurs in the debuggee because we specify <font color="#CCFFCC"><b>INFINITE</b></font> 
+  as its second parameter. When a debug event occurred, <font color="#FFFFCC"><b>WaitForDebugEvent 
+  </b></font>returns and DBEvent is filled with information about the debug event.</font></p>
+<p><font face="Fixedsys" size="-1">&nbsp;&nbsp;&nbsp;.if DBEvent.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox, 0, addr ExitProc, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .break </font></p>
+<p><font face="MS Sans Serif" size="-1">We first check the value in <font color="#CC9900"><b>dwDebugEventCode</b></font>. 
+  If it's<font color="#FFCCCC"><b> EXIT_PROCESS_DEBUG_EVENT,</b></font> we display 
+  a message box saying &quot;The debuggee exits&quot; and then get out of the 
+  debug loop.</font></p>
+<p><font face="Fixedsys" size="-1"> &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke wsprintf, addr buffer, addr ProcessInfo, 
+  DBEvent.u.CreateProcessInfo.hFile, DBEvent.u.CreateProcessInfo.hProcess, DBEvent.u.CreateProcessInfo.hThread, 
+  DBEvent.u.CreateProcessInfo.lpBaseOfImage, DBEvent.u.CreateProcessInfo.lpStartAddress 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr buffer, addr 
+  AppName, MB_OK+MB_ICONINFORMATION &nbsp;&nbsp;&nbsp;</font></p>
+<p><font face="MS Sans Serif" size="-1">If the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+  is <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_EVENT</b></font>, then we display 
+  several interesting information about the debuggee in a message box. We obtain 
+  those information from <font color="#CCFFCC"><b>u.CreateProcessInfo</b></font>. 
+  CreateProcessInfo is a structure of type <font color="#FFCCCC"><b>CREATE_PROCESS_DEBUG_INFO</b></font>. 
+  You can get more info about this structure from Win32 API reference. </font></p>
+<p><font face="Fixedsys" size="-1"> &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXCEPTION_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke ContinueDebugEvent, 
+  DBEvent.dwProcessId, DBEvent.dwThreadId, DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.continue <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif </font></p>
+<p><font face="MS Sans Serif" size="-1">If the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+  is <font color="#CCFFCC"><b>EXCEPTION_DEBUG_EVENT</b></font>, we must check 
+  further for the exact type of exception. It's a long line of nested structure 
+  reference but you can obtain the kind of exception from <font color="#FFCCCC"><b>ExceptionCode</b></font> 
+  member. If the value in <font color="#FFCCCC"><b>ExceptionCode</b></font> is 
+  <font color="#CCFFCC"><b>EXCEPTION_BREAKPOINT</b></font> and it occurs for the 
+  first time (or if we are sure that the debuggee has no embedded int 3h), we 
+  can safely assume that this exception occured when the debuggee was going to 
+  execute its very first instruction. When we are done with the processing, we 
+  must call <font color="#FFFFCC"><b>ContinueDebugEvent</b></font> with <font color="#CCFFCC"><b>DBG_CONTINUE</b></font> 
+  flag to let the debuggee run. Then we go back to wait for the next debug event.</font></p>
+<p><font face="Fixedsys" size="-1"> &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==CREATE_THREAD_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr NewThread, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXIT_THREAD_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox,0, addr EndThread, addr 
+  AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp; .endif </font></p>
+<p><font face="MS Sans Serif" size="-1">If the value in <font color="#CC9900"><b>dwDebugEventCode</b></font> 
+  is <font color="#CCFFCC"><b>CREATE_THREAD_DEBUG_EVENT</b></font> or <font color="#CCFFCC"><b>EXIT_THREAD_DEBUG_EVENT</b></font>, 
+  we display a message box saying so.</font></p>
+<p><font face="Fixedsys" size="-1"> &nbsp;&nbsp; invoke ContinueDebugEvent, DBEvent.dwProcessId, 
+  DBEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED <br>
+  .endw </font></p>
+<p><font face="MS Sans Serif" size="-1">Except for the<font color="#CCFFCC"><b> 
+  EXCEPTION_DEBUG_EVENT</b></font> case above, we call <font color="#FFFFCC"><b>ContinueDebugEvent</b></font> 
+  with <font color="#FFCCCC"><b>DBG_EXCEPTION_NOT_HANDLED</b></font> flag to resume 
+  the debuggee.</font></p>
+<p><font face="Fixedsys" size="-1">invoke CloseHandle,pi.hProcess <br>
+  invoke CloseHandle,pi.hThread </font></p>
+<p><font face="MS Sans Serif" size="-1">When the debuggee exits, we are out of 
+  the debug loop and must close both process and thread handles of the debuggee. 
+  Closing the handles doesn't mean we are killing the process/thread. It just 
+  means we don't want to use those handles to refer to the process/thread anymore.</font> 
+</p>
+<hr>
+<div align="center"><br>
+  <font face="MS Sans Serif" size="-1"><b>[<a href="http://win32asm.cjb.net">Iczelion's 
+  Win32 Assembly Homepage</a>] </b></font></div>
+<p>&nbsp; </p>
+</body>
+</html>

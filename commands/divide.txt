@@ -1,0 +1,8 @@
+div
+
+div -> unsigned data
+idiv -> signed data [negative num]
+
+mov eax,4
+mov esp,2
+div espmov esp,eax

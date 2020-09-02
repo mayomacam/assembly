@@ -1,0 +1,6 @@
+32 bit pointer registers
+ESP EBP SP BP
+
+
+it's gonna give offset value
+it's gonna tell current value of address we need in programming

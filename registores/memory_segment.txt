@@ -1,0 +1,4 @@
+3 type segment
+1. data segment -> .data .bss -> is for variables and constants
+2. code segment -> .text -> is for bulk of code line 
+3. stack segment -> is for containing or storing data

@@ -1,0 +1,7 @@
+and
+
+and operator work on bonary level
+
+mov esp ,8
+mov ebp, 28
+and esp,ebp

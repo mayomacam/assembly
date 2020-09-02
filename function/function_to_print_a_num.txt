@@ -1,0 +1,12 @@
+section .bss
+ var1: resb 4
+
+_start:
+mov esi,4
+mov [var1],esi
+call PrintNumber
+
+PrintNumber:
+mov esi,[var1]
+add esi,48
+mov [var1],esi

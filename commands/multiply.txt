@@ -1,0 +1,10 @@
+mul / imul
+
+mov eax,4
+mov esp,2
+mul esp
+mov esp,eax
+
+
+mul for unsigned value
+imul for signed value

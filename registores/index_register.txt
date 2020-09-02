@@ -1,0 +1,4 @@
+ESI EDI SI DI
+-> 32 bit ESI EDI -> 2 registers
+ESI -> SI
+EDI -> DI

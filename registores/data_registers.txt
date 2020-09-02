@@ -1,0 +1,17 @@
+AX -> accumlation and input and output is used for arithmetic instruction for example multiplication
+
+
+#=======================================================================
+
+BX -> it's called base ready step and this can be used essentially for you know address in index aggressive
+
+#=======================================================================
+
+CX -> counter steady count ready step . these store loop count you know when you are doing it to a know operation so when your running through a loop this essentially stores the you know if store the count almost like the  index.
+
+#=======================================================================
+
+DX -> day to ready step -> used for employment output and can also be used with the accumulator where you start to multiply and divide operations that invalve larger values . you need to have larger values than one of the first 2 bit registers handle then you can use EDX and EAX .
+
+32 bit -> EAX EBX ECX EDX
+16 bit -> AX BX CX DX
